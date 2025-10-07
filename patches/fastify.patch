@@ -1,0 +1,15 @@
+diff --git a/lib/contentTypeParser.js b/lib/contentTypeParser.js
+index 57c29844ca2b9e9169969125114ec6d3cd144a6f..d55a812f8d5910f85dab28d89515629ea9a7b702 100644
+--- a/lib/contentTypeParser.js
++++ b/lib/contentTypeParser.js
+@@ -305,7 +305,9 @@ function getDefaultJsonParser (onProtoPoisoning, onConstructorPoisoning) {
+ 
+   function defaultJsonParser (req, body, done) {
+     if (body.length === 0) {
+-      done(new FST_ERR_CTP_EMPTY_JSON_BODY(), undefined)
++      // https://github.com/nestjs/nest/issues/15743
++      done(null, {})
++      // done(new FST_ERR_CTP_EMPTY_JSON_BODY(), undefined)
+       return
+     }
+     try {

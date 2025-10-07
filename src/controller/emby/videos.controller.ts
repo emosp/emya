@@ -1,0 +1,143 @@
+import { Controller, Inject, Req, Res, Get, Post, Delete, Put, Param, Query, Body } from '@nestjs/common'
+
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston'
+import { Logger } from 'winston'
+
+import * as db from '@/db'
+import { MySql2Database } from 'drizzle-orm/mysql2'
+import { EMBY_ITEM_ID_TYPE_VIDEO_LIST, EMBY_ITEM_ID_TYPE_VIDEO_EPISODE, EmbyService } from '@/controller/emby/emby.service'
+import { ExternalApi } from '@/utils/request'
+
+import { VideoMediaStatus, VideoMediaPathTypes } from '@/db/schema/video_media'
+
+@Controller(['/emby/videos'])
+export class VideosController {
+  constructor(
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
+    @Inject('DB') private model: MySql2Database<typeof db.schema>,
+    private EmbyService: EmbyService,
+  ) {}
+
+  @Get(':emby_media_uuid/AdditionalParts')
+  async VideoAdditionalParts() {
+    return this.EmbyService.ItemResponse()
+  }
+
+  @Get(':emby_media_uuid/:emby_media_name')
+  async VideoPlay(@Param('emby_media_uuid') emby_media_uuid: string, @Req() req: any, @Res() res: any) {
+    /**
+     * 安卓 AfuseKt 2.9.6.3 会自己拼地址 并自己生成 PlaySessionId
+     * /emby/videos/[emby_item_id]/original.mkv?DeviceId=[DeviceId]&MediaSourceId=[MediaSourceId]&PlaySessionId=fe4dd12b6f6e4e2db494b8cb3b8adf38&api_key=[api_key]
+     *
+     * 安卓 yamby 1.6.2.16 会请求多次这个接口
+     *
+     * 其余大多数是 跳转 DirectStreamUrl 地址
+     */
+
+    // todo: 增加缓存
+    // let cache_name = `video_play_${emby_media_uuid}`
+
+    let log = (message) => this.logger.error(`video play: ${emby_media_uuid} = ${message} | ${req.headers?.['user-agent']} ${req.url}`)
+
+    let video_media_uuid: string = emby_media_uuid
+
+    let emby_item = this.EmbyService.ItemIdParse(emby_media_uuid)
+    if (emby_item) {
+      let emby_item_type = emby_item[0],
+        emby_item_value = emby_item[1]
+
+      let video_media_db_where: any = [db.isNull(db.schema.video_media.deleted_at)]
+
+      switch (emby_item_type) {
+        case EMBY_ITEM_ID_TYPE_VIDEO_LIST:
+          video_media_db_where.push(db.eq(db.schema.video_media.video_list_id, emby_item_value))
+          break
+        case EMBY_ITEM_ID_TYPE_VIDEO_EPISODE:
+          video_media_db_where.push(db.eq(db.schema.video_media.video_episode_id, emby_item_value))
+          break
+        default:
+          log(emby_item_type)
+          return res.status(422).send()
+          break
+      }
+
+      video_media_uuid = (
+        (await this.model.query.video_media.findFirst({
+          columns: {
+            uuid: true,
+          },
+          where: db.and(...video_media_db_where),
+        })) as any
+      )?.uuid
+    }
+
+    let video_media = await this.model.query.video_media.findFirst({
+      columns: {
+        id: true,
+        uuid: true,
+        video_list_id: true,
+        video_season_id: true,
+        video_episode_id: true,
+        path_type: true,
+        path_url: true,
+      },
+      where: db.and(
+        // prettier-ignore
+        db.eq(db.schema.video_media.uuid, video_media_uuid),
+        db.eq(db.schema.video_media.status, VideoMediaStatus.STATUS_COMPLETE as any),
+        db.isNull(db.schema.video_media.deleted_at),
+      ),
+    })
+
+    if (!video_media) {
+      return res.status(403).send()
+    }
+
+    // todo: 增加播放量
+
+    let video_media_path_type = video_media.path_type,
+      video_media_path_url = video_media.path_url
+
+    let video_play_url: any = null
+
+    switch (video_media_path_type) {
+      case VideoMediaPathTypes.PATH_TYPE_URL:
+        video_play_url = video_media_path_url
+        break
+      default:
+        if (process.env.API_EXTERNAL) {
+          let api_response: {
+            code: number
+            data: {
+              url: string
+            }
+          } = await ExternalApi('/emby/videoGetUrl', {
+            user_id: req.user_id,
+            path_type: video_media_path_type,
+            path_url: video_media_path_url,
+            uuid: video_media.uuid,
+          }).catch((error) => {
+            log(`external api error ${error}`)
+            return null
+          })
+
+          if (api_response && api_response.code == 200) {
+            video_play_url = api_response.data.url
+          }
+        }
+        break
+    }
+
+    if (!video_play_url) {
+      log(`${video_media_path_type} no url`)
+      return res.status(404).send()
+    }
+
+    return res.redirect(video_play_url, 302)
+  }
+  
+  @Get(':emby_media_uuid/:emby_media_id/Subtitles/:emby_subtitle_id/:emby_subtitle_name')
+  async VideoSubtitle(@Param('emby_subtitle_id') emby_subtitle_id: string, @Req() req: any, @Res() res: any) {
+    return res.status(404).send()
+  }
+}

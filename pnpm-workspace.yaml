@@ -1,0 +1,2 @@
+patchedDependencies:
+  fastify: patches/fastify.patch

@@ -1,0 +1,22 @@
+# compiled output
+/dist
+/node_modules
+/build
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+
+# IDEs and editors
+/.idea
+/.vscode
+
+# dotenv environment variable files
+.env
+
+# Diagnostic reports (https://nodejs.org/api/report.html)
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+/pnpm-lock.yaml
