@@ -16,6 +16,11 @@ declare namespace NodeJS {
     DB_SOCKET_PATH?: string
     DB_CONNECTION_LIMIT: number
 
+    VALKEY_HOST: string
+    VALKEY_PORT: number
+    VALKEY_USERNAME?: string
+    VALKEY_PASSWORD?: string
+
     API_KEY?: string
     API_EXTERNAL?: string
 

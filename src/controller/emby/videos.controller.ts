@@ -9,10 +9,12 @@ import { EMBY_ITEM_ID_TYPE_VIDEO_LIST, EMBY_ITEM_ID_TYPE_VIDEO_EPISODE, EmbyServ
 import { ExternalApi } from '@/utils/request'
 
 import { VideoMediaStatus, VideoMediaPathTypes } from '@/db/schema/video_media'
+import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager'
 
 @Controller(['/emby/videos'])
 export class VideosController {
   constructor(
+    @Inject(CACHE_MANAGER) private cache: Cache,
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
     @Inject('DB') private model: MySql2Database<typeof db.schema>,
     private EmbyService: EmbyService,
@@ -23,19 +25,25 @@ export class VideosController {
     return this.EmbyService.ItemResponse()
   }
 
+  /**
+   * 获取播放地址
+   * 安卓 AfuseKt 2.9.6.3 会自己拼地址 并自己生成 PlaySessionId
+   * /emby/videos/[emby_item_id]/original.mkv?DeviceId=[DeviceId]&MediaSourceId=[MediaSourceId]&PlaySessionId=fe4dd12b6f6e4e2db494b8cb3b8adf38&api_key=[api_key]
+   *
+   * 安卓 yamby 1.6.2.16 会请求多次这个接口
+   *
+   * 其余大多数是 跳转 DirectStreamUrl 地址
+   */
   @Get(':emby_media_uuid/:emby_media_name')
-  async VideoPlay(@Param('emby_media_uuid') emby_media_uuid: string, @Req() req: any, @Res() res: any) {
-    /**
-     * 安卓 AfuseKt 2.9.6.3 会自己拼地址 并自己生成 PlaySessionId
-     * /emby/videos/[emby_item_id]/original.mkv?DeviceId=[DeviceId]&MediaSourceId=[MediaSourceId]&PlaySessionId=fe4dd12b6f6e4e2db494b8cb3b8adf38&api_key=[api_key]
-     *
-     * 安卓 yamby 1.6.2.16 会请求多次这个接口
-     *
-     * 其余大多数是 跳转 DirectStreamUrl 地址
-     */
+  async VideoPlay(@Param('emby_media_uuid') emby_media_uuid: string, @Query('line') line: string, @Req() req: any, @Res() res: any) {
+    let user_id = req.user_id
 
-    // todo: 增加缓存
-    // let cache_name = `video_play_${emby_media_uuid}`
+    let cache_name = `video_play_${emby_media_uuid}_${user_id}_${line}`,
+      cache_data = await this.cache.get(cache_name)
+
+    if (cache_data) {
+      return res.redirect(cache_data, 308)
+    }
 
     let log = (message) => this.logger.error(`video play: ${emby_media_uuid} = ${message} | ${req.headers?.['user-agent']} ${req.url}`)
 
@@ -112,10 +120,11 @@ export class VideosController {
               url: string
             }
           } = await ExternalApi('/emby/videoGetUrl', {
-            user_id: req.user_id,
+            user_id,
             path_type: video_media_path_type,
             path_url: video_media_path_url,
             uuid: video_media.uuid,
+            line,
           }).catch((error) => {
             log(`external api error ${error}`)
             return null
@@ -133,7 +142,9 @@ export class VideosController {
       return res.status(404).send()
     }
 
-    return res.redirect(video_play_url, 302)
+    await this.cache.set(cache_name, video_play_url, 1000 * 60 * 60 * 3)
+
+    return res.redirect(video_play_url, 308)
   }
 
   /**
@@ -142,8 +153,12 @@ export class VideosController {
    */
   @Get(':emby_media_uuid/subtitles/:emby_subtitle_id')
   async VideoSubtitle(@Param('emby_subtitle_id') emby_subtitle_id: number, @Req() req: any, @Res() res: any) {
-    // todo: 增加缓存
-    // let cache_name = `video_subtitle_${emby_media_uuid}`
+    let cache_name = `video_subtitle_${emby_subtitle_id}`,
+      cache_data = await this.cache.get(cache_name)
+
+    if (cache_data) {
+      return res.redirect(cache_data, 308)
+    }
 
     let log = (message) => this.logger.error(`video subtitle: ${emby_subtitle_id} = ${message} | ${req.headers?.['user-agent']} ${req.url}`)
 
@@ -200,6 +215,8 @@ export class VideosController {
       return res.status(404).send()
     }
 
-    return res.redirect(video_subtitle_url, 302)
+    await this.cache.set(cache_name, video_subtitle_url, 1000 * 60 * 60)
+
+    return res.redirect(video_subtitle_url, 308)
   }
 }

@@ -16,11 +16,14 @@
     "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
+    "@keyv/valkey": "^1.0.10",
     "@knaadh/nestjs-drizzle-mysql2": "^1.2.0",
+    "@nestjs/cache-manager": "^3.0.1",
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-fastify": "^11.1.6",
     "argon2": "^0.44.0",
+    "cache-manager": "^7.2.4",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "dayjs": "^1.11.18",
