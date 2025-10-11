@@ -7,18 +7,18 @@ const STATUS_REFUSE = 'refuse'
 const STATUS_COMPLETE = 'complete'
 
 export const VideoMediaStatus = {
-    STATUS_DEFAULT,
-    STATUS_REVIEW,
-    STATUS_REFUSE,
-    STATUS_COMPLETE,
+  STATUS_DEFAULT,
+  STATUS_REVIEW,
+  STATUS_REFUSE,
+  STATUS_COMPLETE,
 }
 
 const PATH_TYPE_LOCAL = 'local'
 const PATH_TYPE_URL = 'url'
 
 export const VideoMediaPathTypes = {
-    PATH_TYPE_LOCAL,
-    PATH_TYPE_URL,
+  PATH_TYPE_LOCAL,
+  PATH_TYPE_URL,
 }
 
 // 视频媒体
@@ -91,5 +91,6 @@ export const video_media = mysql.mysqlTable(
   (table) => [
     // prettier-ignore
     mysql.index('idx_media').on(table.video_list_id, table.video_season_id, table.video_episode_id),
+    mysql.index('idx_user_id').on(table.user_id),
   ],
 )

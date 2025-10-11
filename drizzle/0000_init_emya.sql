@@ -184,8 +184,10 @@ CREATE TABLE `video_subtitle` (
 	`deleted_at` timestamp,
 	`video_media_id` bigint unsigned NOT NULL,
 	`title` varchar(255) NOT NULL,
+	`codec` varchar(255) NOT NULL,
 	`path_type` varchar(255),
 	`path_url` varchar(255),
+	`user_id` bigint unsigned,
 	CONSTRAINT `video_subtitle_id` PRIMARY KEY(`id`)
 ) AUTO_INCREMENT = 1001;
 --> statement-breakpoint
@@ -196,4 +198,6 @@ CREATE INDEX `idx_image` ON `video_image` (`relation_type`,`relation_id`);--> st
 CREATE INDEX `idx_title` ON `video_list` (`title`);--> statement-breakpoint
 CREATE INDEX `idx_origin_title` ON `video_list` (`origin_title`);--> statement-breakpoint
 CREATE INDEX `idx_media` ON `video_media` (`video_list_id`,`video_season_id`,`video_episode_id`);--> statement-breakpoint
+CREATE INDEX `idx_user_id` ON `video_media` (`user_id`);--> statement-breakpoint
 CREATE INDEX `idx_video_media_id` ON `video_subtitle` (`video_media_id`);
+CREATE INDEX `idx_user_id` ON `video_subtitle` (`user_id`);

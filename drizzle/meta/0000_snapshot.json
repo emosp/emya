@@ -992,6 +992,13 @@
             "video_episode_id"
           ],
           "isUnique": false
+        },
+        "idx_user_id": {
+          "name": "idx_user_id",
+          "columns": [
+            "user_id"
+          ],
+          "isUnique": false
         }
       },
       "foreignKeys": {},
@@ -1270,6 +1277,13 @@
           "notNull": true,
           "autoincrement": false
         },
+        "codec": {
+          "name": "codec",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
         "path_type": {
           "name": "path_type",
           "type": "varchar(255)",
@@ -1283,6 +1297,13 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {
@@ -1290,6 +1311,13 @@
           "name": "idx_video_media_id",
           "columns": [
             "video_media_id"
+          ],
+          "isUnique": false
+        },
+        "idx_user_id": {
+          "name": "idx_user_id",
+          "columns": [
+            "user_id"
           ],
           "isUnique": false
         }

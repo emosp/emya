@@ -135,9 +135,71 @@ export class VideosController {
 
     return res.redirect(video_play_url, 302)
   }
-  
-  @Get(':emby_media_uuid/:emby_media_id/Subtitles/:emby_subtitle_id/:emby_subtitle_name')
-  async VideoSubtitle(@Param('emby_subtitle_id') emby_subtitle_id: string, @Req() req: any, @Res() res: any) {
-    return res.status(404).send()
+
+  /**
+   * 自定义字幕文件地址
+   * 不支持 安卓 afusekt 2.9.6.3 自定义请求的字幕地址 /Videos/[emby_item_id]/[emby_media_uuid]/Subtitles/[emby_subtitle_id]/[emby_subtitle_name]?X-Emby-Token=[]&api_key=[]
+   */
+  @Get(':emby_media_uuid/subtitles/:emby_subtitle_id')
+  async VideoSubtitle(@Param('emby_subtitle_id') emby_subtitle_id: number, @Req() req: any, @Res() res: any) {
+    // todo: 增加缓存
+    // let cache_name = `video_subtitle_${emby_media_uuid}`
+
+    let log = (message) => this.logger.error(`video subtitle: ${emby_subtitle_id} = ${message} | ${req.headers?.['user-agent']} ${req.url}`)
+
+    let subtitle_data = await this.model.query.video_subtitle.findFirst({
+      columns: {
+        path_type: true,
+        path_url: true,
+      },
+      where: db.and(
+        // prettier-ignore
+        db.eq(db.schema.video_subtitle.id, emby_subtitle_id),
+        db.isNull(db.schema.video_subtitle.deleted_at),
+      ),
+    })
+
+    if (!subtitle_data) {
+      return res.status(401).send()
+    }
+
+    let video_subtitle_path_type = subtitle_data.path_type,
+      video_subtitle_path_url = subtitle_data.path_url
+
+    let video_subtitle_url: any = null
+    switch (video_subtitle_path_type) {
+      case VideoMediaPathTypes.PATH_TYPE_URL:
+        video_subtitle_url = video_subtitle_path_url
+        break
+      default:
+        if (process.env.API_EXTERNAL) {
+          let api_response: {
+            code: number
+            data: {
+              url: string
+            }
+          } = await ExternalApi('/emby/subtitleGetUrl', {
+            user_id: req.user_id,
+            path_type: video_subtitle_path_type,
+            path_url: video_subtitle_path_url,
+            subtitle_id: emby_subtitle_id,
+          }).catch((error) => {
+            log(`external api error ${error}`)
+            return null
+          })
+
+          if (api_response && api_response.code == 200) {
+            video_subtitle_url = api_response.data.url
+          }
+        }
+        break
+    }
+
+    if (!video_subtitle_url) {
+      log(`${video_subtitle_path_type} no url`)
+      return res.status(404).send()
+    }
+
+    return res.redirect(video_subtitle_url, 302)
   }
 }

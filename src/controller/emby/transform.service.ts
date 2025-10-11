@@ -549,6 +549,7 @@ export class TransformService {
             id: true,
             video_media_id: true,
             title: true,
+            codec: true,
           },
           where: db.isNull(db.schema.video_subtitle.deleted_at),
         },
@@ -565,74 +566,77 @@ export class TransformService {
       // for (let file_stream of JSON.parse(file_streams)) {
       // }
 
+      let data_uuid = video_media.uuid,
+        file_second = video_media.file_second
+
       let subtitle_default_id: any = null
       for (let subtitle of video_media.subtitles) {
         subtitle_default_id = subtitle.id
         media_streams.push({
-          AttachmentSize: 0,
-          Codec: 'ass',
-          DeliveryMethod: 'Encode',
+          Codec: subtitle.codec,
           DisplayTitle: subtitle.title,
+          IsInterlaced: false,
+          IsDefault: false,
+          IsForced: false,
+          IsHearingImpaired: false,
+          Type: 'Subtitle',
+          Index: subtitle_default_id,
+          IsExternal: true,
+          DeliveryMethod: 'External',
+          DeliveryUrl: `/emby/videos/${data_uuid}/subtitles/${subtitle_default_id}?api_key=${this.request.api_key}`,
+          IsExternalUrl: false,
+          IsTextSubtitleStream: true,
+          SupportsExternalStream: true,
+          Path: `/subtitles/${subtitle_default_id}`,
+          Protocol: 'File',
+          ExtendedVideoType: 'None',
           ExtendedVideoSubType: 'None',
           ExtendedVideoSubTypeDescription: 'None',
-          ExtendedVideoType: 'None',
-          Index: subtitle_default_id,
-          IsDefault: false,
-          IsExternal: true,
-          IsForced: true,
-          IsHearingImpaired: false,
-          IsInterlaced: false,
-          IsTextSubtitleStream: true,
-          Path: '/',
-          Protocol: 'File',
-          SupportsExternalStream: true,
-          Type: 'Subtitle',
+          AttachmentSize: 0,
         })
       }
 
-      let data_uuid = video_media.uuid,
-        file_second = video_media.file_second,
-        rowFormat = (name: string, line: null | string = null) => {
-          let play_url = play_session_id ? `/videos/${data_uuid}/original.strm?line=${line}&api_key=${this.request.api_key}` : null
+      let rowFormat = (name: string, line: null | string = null) => {
+        let play_url = play_session_id ? `/videos/${data_uuid}/original.strm?line=${line}&api_key=${this.request.api_key}` : null
 
-          let item: any = {
-            Chapters: [],
-            Protocol: 'Http',
-            Id: `${data_uuid}_${line}`,
-            Path: `/${data_uuid}`,
-            Type: 'Default',
-            /**
-             * 安卓 femor 1.0.66 的播放地址 如果返回的是 strm 就自己拼接 Path 了
-             */
-            Container: 'mkv',
-            Size: video_media.file_size || 0,
-            Name: name,
-            IsRemote: true,
-            RunTimeTicks: file_second ? file_second * 10000000 : 0,
-            HasMixedProtocols: false,
-            SupportsTranscoding: true,
-            SupportsDirectStream: true,
-            SupportsDirectPlay: true,
-            IsInfiniteStream: false,
-            RequiresOpening: false,
-            RequiresClosing: false,
-            RequiresLooping: false,
-            SupportsProbing: false,
-            MediaStreams: media_streams,
-            Formats: [],
-            RequiredHttpHeaders: {},
-            DirectStreamUrl: play_url,
-            AddApiKeyToDirectStreamUrl: true,
-            ReadAtNativeFramerate: false,
-            ItemId: data_uuid,
-          }
-
-          if (subtitle_default_id) {
-            item.DefaultSubtitleStreamIndex = subtitle_default_id
-          }
-
-          return item
+        let item: any = {
+          Chapters: [],
+          Protocol: 'Http',
+          Id: `${data_uuid}_${line}`,
+          Path: `/${data_uuid}`,
+          Type: 'Default',
+          /**
+           * 安卓 femor 1.0.66 的播放地址 如果返回的是 strm 就自己拼接 Path 了
+           */
+          Container: 'mkv',
+          Size: video_media.file_size || 0,
+          Name: name,
+          IsRemote: true,
+          RunTimeTicks: file_second ? file_second * 10000000 : 0,
+          HasMixedProtocols: false,
+          SupportsTranscoding: true,
+          SupportsDirectStream: true,
+          SupportsDirectPlay: true,
+          IsInfiniteStream: false,
+          RequiresOpening: false,
+          RequiresClosing: false,
+          RequiresLooping: false,
+          SupportsProbing: false,
+          MediaStreams: media_streams,
+          Formats: [],
+          RequiredHttpHeaders: {},
+          DirectStreamUrl: play_url,
+          AddApiKeyToDirectStreamUrl: true,
+          ReadAtNativeFramerate: false,
+          ItemId: data_uuid,
         }
+
+        if (subtitle_default_id) {
+          item.DefaultSubtitleStreamIndex = subtitle_default_id
+        }
+
+        return item
+      }
 
       rows.push(rowFormat(video_media.name))
     }
