@@ -103,7 +103,8 @@
     "user_id": 1,
     "path_type": "path_type",
     "path_url": "path_url",
-    "uuid": "uuid"
+    "uuid": "uuid",
+    "line": "line"
 }
 
 // 正确响应
@@ -112,6 +113,37 @@
     "data": {
         // 播放地址
         "url": "http://emya/play"
+    }
+}
+
+// 错误响应
+{
+    "code": 404,
+    "message": "错误内容"
+}
+```
+
+### 请求字幕地址 可选
+
+播放视频时 在 `video_subtitle` 中遇到不认识的 `path_type` 时
+
+`post` `/emby/subtitleGetUrl`
+
+```json
+// 请求
+{
+    "user_id": 1,
+    "path_type": "path_type",
+    "path_url": "path_url",
+    "subtitle_id": 1
+}
+
+// 正确响应
+{
+    "code": 200,
+    "data": {
+        // 字幕地址
+        "url": "http://emya/subtitle"
     }
 }
 
