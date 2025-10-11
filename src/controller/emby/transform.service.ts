@@ -440,6 +440,15 @@ export class TransformService {
           return null
         }
 
+        let video_season_number = (
+          (await this.model.query.video_season.findFirst({
+            columns: {
+              season_number: true,
+            },
+            where: db.eq(db.schema.video_season.id, video_episode.video_season_id),
+          })) as any
+        ).season_number
+
         emby_item_data = {
           Name: video_episode.title,
           Id: emby_item_id,
@@ -461,7 +470,7 @@ export class TransformService {
           FileName: video_episode.episode_number.toString(),
           ProductionYear: Number(dayjs(video_episode.date_air).format('YYYY')),
           IndexNumber: video_episode.episode_number,
-          ParentIndexNumber: video_episode.episode_number,
+          ParentIndexNumber: video_season_number,
           RemoteTrailers: [],
           ProviderIds: {},
           IsFolder: false,
