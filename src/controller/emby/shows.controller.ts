@@ -119,6 +119,17 @@ export class ShowsController {
       },
     })
 
+    let season_number = Number(
+      (
+        await this.model.query.video_season.findFirst({
+          columns: {
+            season_number: true,
+          },
+          where: db.eq(db.schema.video_season.id, query_season_id),
+        })
+      )?.season_number,
+    )
+
     let rows: any = []
     for (let episode of episodes) {
       let episode_item_id = this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_EPISODE, episode.id),
@@ -139,7 +150,7 @@ export class ShowsController {
         Overview: episode.description,
         // ProductionYear: Number(dayjs(episode.date_air).format('YYYY')),
         IndexNumber: episode.episode_number,
-        ParentIndexNumber: episode.episode_number,
+        ParentIndexNumber: season_number,
         IsFolder: false,
         Type: 'Episode',
         People: [],
