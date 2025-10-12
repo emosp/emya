@@ -487,7 +487,7 @@ export class TransformService {
             // 'UnplayedItemCount'     : 0,
             PlaybackPositionTicks: 0,
             PlayCount: 0,
-            IsFavorite: false,
+            IsFavorite: has_favorited,
             // LastPlayedDate: '',
             Played: false,
           },
