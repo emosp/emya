@@ -146,6 +146,7 @@ export class VideosController {
       return res.status(404).send()
     }
 
+    video_play_url = encodeURI(video_play_url)
     await this.cache.set(cache_name, video_play_url, 1000 * cache_seconds)
 
     return res.redirect(video_play_url, 308)
@@ -223,6 +224,7 @@ export class VideosController {
       return res.status(404).send()
     }
 
+    video_subtitle_url = encodeURI(video_subtitle_url)
     await this.cache.set(cache_name, video_subtitle_url, 1000 * cache_seconds)
 
     return res.redirect(video_subtitle_url, 308)
