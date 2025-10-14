@@ -2,8 +2,10 @@ import * as mysql from 'drizzle-orm/mysql-core'
 import { base } from '@/db/schema/common'
 
 export const VIDEO_SUBTITLE_CODEC_ASS = 'ass'
+export const VIDEO_SUBTITLE_CODEC_SRT = 'srt'
 export const VideoSubtitleCodecs = {
   VIDEO_SUBTITLE_CODEC_ASS,
+  VIDEO_SUBTITLE_CODEC_SRT,
 }
 
 // 视频 字幕
