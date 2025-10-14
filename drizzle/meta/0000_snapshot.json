@@ -653,7 +653,7 @@
         },
         "path_url": {
           "name": "path_url",
-          "type": "varchar(255)",
+          "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -963,7 +963,7 @@
         },
         "path_url": {
           "name": "path_url",
-          "type": "varchar(255)",
+          "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -1293,7 +1293,7 @@
         },
         "path_url": {
           "name": "path_url",
-          "type": "varchar(255)",
+          "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

@@ -47,9 +47,7 @@ export const video_image = mysql.mysqlTable(
     path_type: mysql.varchar({
       length: 255,
     }),
-    path_url: mysql.varchar({
-      length: 255,
-    }),
+    path_url: mysql.text(),
   },
   (table) => [
     // prettier-ignore

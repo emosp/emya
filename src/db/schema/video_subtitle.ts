@@ -30,9 +30,7 @@ export const video_subtitle = mysql.mysqlTable(
     path_type: mysql.varchar({
       length: 255,
     }),
-    path_url: mysql.varchar({
-      length: 255,
-    }),
+    path_url: mysql.text(),
     user_id: mysql.bigint({
       mode: 'number',
       unsigned: true,

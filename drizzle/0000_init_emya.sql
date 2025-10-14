@@ -95,7 +95,7 @@ CREATE TABLE `video_image` (
 	`relation_type` varchar(255) NOT NULL,
 	`relation_id` bigint unsigned NOT NULL,
 	`path_type` varchar(255),
-	`path_url` varchar(255),
+	`path_url` text,
 	CONSTRAINT `video_image_id` PRIMARY KEY(`id`)
 ) AUTO_INCREMENT = 1001;
 --> statement-breakpoint
@@ -138,7 +138,7 @@ CREATE TABLE `video_media` (
 	`file_container` varchar(255),
 	`file_chapters` json,
 	`path_type` varchar(255),
-	`path_url` varchar(255),
+	`path_url` text,
 	`user_id` bigint unsigned,
 	`number_view` bigint unsigned,
 	CONSTRAINT `video_media_id` PRIMARY KEY(`id`),
@@ -186,7 +186,7 @@ CREATE TABLE `video_subtitle` (
 	`title` varchar(255) NOT NULL,
 	`codec` varchar(255) NOT NULL,
 	`path_type` varchar(255),
-	`path_url` varchar(255),
+	`path_url` text,
 	`user_id` bigint unsigned,
 	CONSTRAINT `video_subtitle_id` PRIMARY KEY(`id`)
 ) AUTO_INCREMENT = 1001;
