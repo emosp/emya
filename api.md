@@ -112,7 +112,8 @@
     "code": 200,
     "data": {
         // 播放地址
-        "url": "http://emya/play"
+        "url": "http://emya/play",
+        "cache_seconds": 300
     }
 }
 
@@ -143,7 +144,8 @@
     "code": 200,
     "data": {
         // 字幕地址
-        "url": "http://emya/subtitle"
+        "url": "http://emya/subtitle",
+        "cache_seconds": 300
     }
 }
 

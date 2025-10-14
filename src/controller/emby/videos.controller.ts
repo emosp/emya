@@ -45,6 +45,8 @@ export class VideosController {
       return res.redirect(cache_data, 308)
     }
 
+    let cache_seconds = 1000 * 60 * 60 * 3
+
     let log = (message) => this.logger.error(`video play: ${emby_media_uuid} = ${message} | ${req.headers?.['user-agent']} ${req.url}`)
 
     let video_media_uuid: string = emby_media_uuid
@@ -118,6 +120,7 @@ export class VideosController {
             code: number
             data: {
               url: string
+              cache_seconds: number
             }
           } = await ExternalApi('/emby/videoGetUrl', {
             user_id,
@@ -132,6 +135,7 @@ export class VideosController {
 
           if (api_response && api_response.code == 200) {
             video_play_url = api_response.data.url
+            cache_seconds = api_response.data.cache_seconds
           }
         }
         break
@@ -142,7 +146,7 @@ export class VideosController {
       return res.status(404).send()
     }
 
-    await this.cache.set(cache_name, video_play_url, 1000 * 60 * 60 * 3)
+    await this.cache.set(cache_name, video_play_url, 1000 * cache_seconds)
 
     return res.redirect(video_play_url, 308)
   }
@@ -159,6 +163,8 @@ export class VideosController {
     if (cache_data) {
       return res.redirect(cache_data, 308)
     }
+
+    let cache_seconds = 1000 * 60 * 60 * 3
 
     let log = (message) => this.logger.error(`video subtitle: ${emby_subtitle_id} = ${message} | ${req.headers?.['user-agent']} ${req.url}`)
 
@@ -192,6 +198,7 @@ export class VideosController {
             code: number
             data: {
               url: string
+              cache_seconds: number
             }
           } = await ExternalApi('/emby/subtitleGetUrl', {
             user_id: req.user_id,
@@ -205,6 +212,7 @@ export class VideosController {
 
           if (api_response && api_response.code == 200) {
             video_subtitle_url = api_response.data.url
+            cache_seconds = api_response.data.cache_seconds
           }
         }
         break
@@ -215,7 +223,7 @@ export class VideosController {
       return res.status(404).send()
     }
 
-    await this.cache.set(cache_name, video_subtitle_url, 1000 * 60 * 60)
+    await this.cache.set(cache_name, video_subtitle_url, 1000 * cache_seconds)
 
     return res.redirect(video_subtitle_url, 308)
   }
