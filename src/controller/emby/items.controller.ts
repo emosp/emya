@@ -9,11 +9,13 @@ import { VideoImagePathTypes } from '@/db/schema/video_image'
 
 import { MySql2Database } from 'drizzle-orm/mysql2'
 import * as db from '@/db'
+import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager'
 
 @Controller(['/emby/items'])
 export class ItemsController {
   constructor(
     @Inject('DB') private model: MySql2Database<typeof db.schema>,
+    @Inject(CACHE_MANAGER) private cache: Cache,
     private EmbyService: EmbyService,
     private TransformService: TransformService,
   ) {}
@@ -67,10 +69,16 @@ export class ItemsController {
   @Get(':emby_item_id/Images/:image_type')
   @IgnoreAuth()
   async ItemsImage(@Param('emby_item_id') emby_item_id: string, @Param('image_type') image_type: string, @Res() res: any) {
-    // todo: cache
     let emby_item = this.EmbyService.ItemIdParse(emby_item_id)
     if (!emby_item) {
       return res.status(404).send()
+    }
+
+    let cache_name = `image_${emby_item_id}`,
+      cache_data = await this.cache.get(cache_name)
+
+    if (cache_data) {
+      return res.redirect(cache_data, 301)
     }
 
     let data = await this.model.query.video_image.findFirst({
@@ -102,6 +110,7 @@ export class ItemsController {
         break
     }
 
+    await this.cache.set(cache_name, url, 1000 * 60 * 60)
     return res.redirect(url, 301)
   }
 
