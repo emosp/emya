@@ -220,6 +220,7 @@ export class UsersController {
         name: true,
       },
       where: db.and(db.inArray(db.schema.library.id, user_folders)),
+      orderBy: db.asc(db.schema.library.id),
     })
 
     let emby_server_id = this.EmbyService.Id()
