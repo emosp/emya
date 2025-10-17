@@ -185,6 +185,10 @@ export class TransformService {
       if (search_include_item_types.includes('Episode') && search_include_item_types.length == 1) {
         sql_conditions.push(db.eq(db.schema.video_list.id, 0))
       }
+
+      if (where_video_types.length) {
+        sql_conditions.push(db.inArray(db.schema.video_list.video_type, where_video_types))
+      }
     }
 
     sql_db.where(db.and(...sql_conditions))
