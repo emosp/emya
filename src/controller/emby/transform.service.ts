@@ -181,13 +181,12 @@ export class TransformService {
       if (search_include_item_types.includes('Movie')) {
         where_video_types.push(VideoTypes.VIDEO_TYPE_MOVIE)
       }
-      // 收藏列表 不展示集信息
-      if (search_include_item_types.includes('Episode') && search_include_item_types.length == 1) {
-        sql_conditions.push(db.eq(db.schema.video_list.id, 0))
-      }
 
       if (where_video_types.length) {
         sql_conditions.push(db.inArray(db.schema.video_list.video_type, where_video_types))
+      } else {
+        // 收藏列表 只支持 电影 和 电视
+        sql_conditions.push(db.eq(db.schema.video_list.id, 0))
       }
     }
 
