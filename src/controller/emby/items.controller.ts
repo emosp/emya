@@ -91,6 +91,7 @@ export class ItemsController {
         db.eq(db.schema.video_image.relation_type, emby_item[0]),
         db.eq(db.schema.video_image.relation_id, emby_item[1]),
         db.eq(db.schema.video_image.type, image_type),
+        db.isNull(db.schema.video_image.deleted_at),
       ),
     })
 
