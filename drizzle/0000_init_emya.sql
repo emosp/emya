@@ -96,6 +96,7 @@ CREATE TABLE `video_image` (
 	`relation_id` bigint unsigned NOT NULL,
 	`path_type` varchar(255),
 	`path_url` text,
+	`user_id` bigint unsigned,
 	CONSTRAINT `video_image_id` PRIMARY KEY(`id`)
 ) AUTO_INCREMENT = 1001;
 --> statement-breakpoint
@@ -195,6 +196,7 @@ CREATE INDEX `idx_name` ON `library` (`name`);--> statement-breakpoint
 CREATE INDEX `idx_user_id` ON `token` (`user_id`);--> statement-breakpoint
 CREATE INDEX `idx_video_record` ON `user_video_record` (`video_list_id`,`user_id`,`is_complete`);--> statement-breakpoint
 CREATE INDEX `idx_image` ON `video_image` (`relation_type`,`relation_id`);--> statement-breakpoint
+CREATE INDEX `idx_user_id` ON `video_image` (`user_id`);--> statement-breakpoint
 CREATE INDEX `idx_title` ON `video_list` (`title`);--> statement-breakpoint
 CREATE INDEX `idx_origin_title` ON `video_list` (`origin_title`);--> statement-breakpoint
 CREATE INDEX `idx_media` ON `video_media` (`video_list_id`,`video_season_id`,`video_episode_id`);--> statement-breakpoint

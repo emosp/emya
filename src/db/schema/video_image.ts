@@ -48,9 +48,14 @@ export const video_image = mysql.mysqlTable(
       length: 255,
     }),
     path_url: mysql.text(),
+    user_id: mysql.bigint({
+      mode: 'number',
+      unsigned: true,
+    }),
   },
   (table) => [
     // prettier-ignore
     mysql.index('idx_image').on(table.relation_type, table.relation_id),
+    mysql.index('idx_user_id').on(table.user_id),
   ],
 )
