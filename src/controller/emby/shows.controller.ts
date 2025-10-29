@@ -106,16 +106,45 @@ export class ShowsController {
       sql_conditions.push(db.eq(db.schema.video_episode.video_season_id, query_season_id))
     }
 
+    let has_media_sources = req.query.fields?.includes('MediaSources'),
+      with_video_medias: any = {
+        columns: {
+          video_episode_id: true,
+          file_second: true,
+        },
+        where: db.isNull(db.schema.video_media.deleted_at),
+      }
+
+    if (has_media_sources) {
+      with_video_medias = {
+        columns: {
+          uuid: true,
+          name: true,
+          file_size: true,
+          file_second: true,
+          file_streams: true,
+          file_container: true,
+          file_chapters: true,
+          path_type: true,
+        },
+        with: {
+          subtitles: {
+            columns: {
+              id: true,
+              video_media_id: true,
+              title: true,
+              codec: true,
+            },
+            where: db.isNull(db.schema.video_subtitle.deleted_at),
+          },
+        },
+      }
+    }
+
     let episodes = await this.model.query.video_episode.findMany({
       where: db.and(...sql_conditions),
       with: {
-        video_medias: {
-          columns: {
-            video_episode_id: true,
-            file_second: true,
-          },
-          where: db.isNull(db.schema.video_media.deleted_at),
-        },
+        video_medias: with_video_medias,
       },
     })
 
@@ -133,7 +162,7 @@ export class ShowsController {
     let rows: any = []
     for (let episode of episodes) {
       let episode_item_id = this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_EPISODE, episode.id),
-        video_medias = episode.video_medias
+        video_medias: any = episode.video_medias
 
       if (!video_medias.length) {
         // continue
@@ -167,7 +196,7 @@ export class ShowsController {
         },
         BackdropImageTags: [],
         Chapters: [],
-        MediaSources: [],
+        MediaSources: has_media_sources ? await this.TransformService.VideoMediaFormat(video_medias) : [],
         MediaType: 'Video',
       })
     }

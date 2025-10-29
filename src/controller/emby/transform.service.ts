@@ -535,42 +535,7 @@ export class TransformService {
     }
   }
 
-  async VideoMedia(video_list_id: number, video_episode_id: any = null, no_media_add_default: boolean = false, play_session_id: any = null) {
-    let db_where: any = [
-      // prettier-ignore
-      db.eq(db.schema.video_media.video_list_id, video_list_id),
-      db.isNull(db.schema.video_media.deleted_at),
-    ]
-
-    if (video_episode_id) {
-      db_where.push(db.eq(db.schema.video_media.video_episode_id, video_episode_id))
-    }
-
-    let video_medias = await this.model.query.video_media.findMany({
-      columns: {
-        uuid: true,
-        name: true,
-        file_size: true,
-        file_second: true,
-        file_streams: true,
-        file_container: true,
-        file_chapters: true,
-        path_type: true,
-      },
-      where: db.and(...db_where),
-      with: {
-        subtitles: {
-          columns: {
-            id: true,
-            video_media_id: true,
-            title: true,
-            codec: true,
-          },
-          where: db.isNull(db.schema.video_subtitle.deleted_at),
-        },
-      },
-    })
-
+  async VideoMediaFormat(video_medias: any, play_session_id = null) {
     let rows: any = []
 
     for (let video_media of video_medias) {
@@ -655,6 +620,47 @@ export class TransformService {
 
       rows.push(rowFormat(video_media.name))
     }
+
+    return rows
+  }
+
+  async VideoMedia(video_list_id: number, video_episode_id: any = null, no_media_add_default: boolean = false, play_session_id: any = null) {
+    let db_where: any = [
+      // prettier-ignore
+      db.eq(db.schema.video_media.video_list_id, video_list_id),
+      db.isNull(db.schema.video_media.deleted_at),
+    ]
+
+    if (video_episode_id) {
+      db_where.push(db.eq(db.schema.video_media.video_episode_id, video_episode_id))
+    }
+
+    let video_medias = await this.model.query.video_media.findMany({
+      columns: {
+        uuid: true,
+        name: true,
+        file_size: true,
+        file_second: true,
+        file_streams: true,
+        file_container: true,
+        file_chapters: true,
+        path_type: true,
+      },
+      where: db.and(...db_where),
+      with: {
+        subtitles: {
+          columns: {
+            id: true,
+            video_media_id: true,
+            title: true,
+            codec: true,
+          },
+          where: db.isNull(db.schema.video_subtitle.deleted_at),
+        },
+      },
+    })
+
+    let rows = await this.VideoMediaFormat(video_medias, play_session_id)
 
     if (no_media_add_default && !rows.length) {
       rows.push({
