@@ -297,7 +297,19 @@ export class TransformService {
         }
 
         let video_type = video_list.video_type,
-          is_movie = video_type == VideoTypes.VIDEO_TYPE_MOVIE
+          is_movie = video_type == VideoTypes.VIDEO_TYPE_MOVIE,
+          child_count = 0
+
+        if (!is_movie) {
+          child_count = await this.model.$count(
+            db.schema.video_season,
+            db.and(
+              // prettier-ignore
+              db.eq(db.schema.video_season.video_list_id, emby_item_value),
+              db.isNull(db.schema.video_season.deleted_at),
+            ),
+          )
+        }
 
         emby_item_data = {
           Name: video_list.title,
@@ -338,7 +350,7 @@ export class TransformService {
             IsFavorite: has_favorited,
             Played: false,
           },
-          ChildCount: 0,
+          ChildCount: child_count,
           DisplayPreferencesId: emby_item_id,
           AirDays: [],
           PrimaryImageAspectRatio: 0.67,
