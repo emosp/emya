@@ -28,5 +28,6 @@ declare namespace NodeJS {
 
     EMBY_VERSION: string
     EMBY_ID: string
+    EMBY_EXT_SERVER_DOMAINS: string
   }
 }

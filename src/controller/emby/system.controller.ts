@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Put } from '@nestjs/common'
+import { Controller, Res, Get, Post, Delete, Put } from '@nestjs/common'
 
 import { EmbyService } from '@/controller/emby/emby.service'
 import { IgnoreAuth } from '@/controller/emby/auth.decorator'
@@ -61,6 +61,21 @@ export class SystemController {
       ServerName: this.EmbyService.ServerName(),
       Version: this.EmbyService.Version(),
       Id: this.EmbyService.Id(),
+    }
+  }
+
+  // https://github.com/uhdnow/emby_ext_domains
+  @Get('Ext/ServerDomains')
+  async ExtServerDomains(@Res() res: any) {
+    try {
+      let data = JSON.parse(process.env?.EMBY_EXT_SERVER_DOMAINS)
+      return res.send({
+        data,
+        ok: true,
+      })
+    } catch (e) {
+      console.error(`ext_server_domains error: ${e}`)
+      return res.status(404).send()
     }
   }
 
