@@ -125,7 +125,7 @@ export class ShowsController {
           columns: {
             season_number: true,
           },
-          where: db.eq(db.schema.video_season.id, query_season_id),
+          where: db.eq(db.schema.video_season.id, query_season_id || episodes[0]?.video_season_id),
         })
       )?.season_number,
     )
