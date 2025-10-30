@@ -455,14 +455,22 @@ export class TransformService {
           return null
         }
 
-        let video_season_number = (
-          (await this.model.query.video_season.findFirst({
+        let video_episode_video_title = (
+          (await this.model.query.video_list.findFirst({
             columns: {
-              season_number: true,
+              title: true,
             },
-            where: db.eq(db.schema.video_season.id, video_episode.video_season_id),
+            where: db.eq(db.schema.video_list.id, video_episode.video_list_id),
           })) as any
-        ).season_number
+        ).title
+
+        let video_episode_season_data: any = await this.model.query.video_season.findFirst({
+          columns: {
+            title: true,
+            season_number: true,
+          },
+          where: db.eq(db.schema.video_season.id, video_episode.video_season_id),
+        })
 
         emby_item_data = {
           Name: video_episode.title,
@@ -485,7 +493,7 @@ export class TransformService {
           FileName: video_episode.episode_number.toString(),
           ProductionYear: Number(dayjs(video_episode.date_air).format('YYYY')),
           IndexNumber: video_episode.episode_number,
-          ParentIndexNumber: video_season_number,
+          ParentIndexNumber: video_episode_season_data.season_number,
           RemoteTrailers: [],
           ProviderIds: {},
           IsFolder: false,
@@ -507,9 +515,9 @@ export class TransformService {
             Played: false,
           },
           SeriesId: this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_LIST, video_episode.video_list_id),
-          SeriesName: video_episode.title,
+          SeriesName: video_episode_video_title,
           SeasonId: this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_SEASON, video_episode.video_season_id),
-          SeasonName: '',
+          SeasonName: video_episode_season_data.title,
           DisplayPreferencesId: '',
           PrimaryImageAspectRatio: 1.7,
           SeriesPrimaryImageTag: '',
