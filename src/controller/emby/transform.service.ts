@@ -122,6 +122,44 @@ export class TransformService {
     )?.title
   }
 
+  async getUserVideoRecord(user_id: number, video_list_id: null | number = null, video_episode_id: null | number = null) {
+    let where: any = [db.eq(db.schema.user_video_record.user_id, user_id)]
+
+    if (video_list_id) {
+      where.push(db.eq(db.schema.user_video_record.video_list_id, video_list_id))
+    }
+
+    if (video_episode_id) {
+      where.push(db.eq(db.schema.user_video_record.video_episode_id, video_episode_id))
+    }
+
+    let data = await this.model.query.user_video_record.findFirst({
+      columns: {
+        play_seconds: true,
+        is_complete: true,
+      },
+      where: db.and(...where),
+    })
+
+    return await this.formatUserVideoRecord(data)
+  }
+
+  async formatUserVideoRecord(data: any = null) {
+    let play_ms = 0,
+      is_complete = false
+
+    // todo: 播放百分比
+    if (data) {
+      play_ms = (data?.play_seconds || 0) * 10000000
+      is_complete = Boolean(data?.is_complete)
+    }
+
+    return {
+      play_ms,
+      is_complete,
+    }
+  }
+
   async VideoList(user_id: number, search: any = {}) {
     let sql_db = this.model
       .select({
@@ -309,9 +347,12 @@ export class TransformService {
 
         let video_type = video_list.video_type,
           is_movie = video_type == VideoTypes.VIDEO_TYPE_MOVIE,
-          child_count = 0
+          child_count = 0,
+          user_video_record_list = await this.formatUserVideoRecord()
 
-        if (!is_movie) {
+        if (is_movie) {
+          user_video_record_list = await this.getUserVideoRecord(user_id, video_list.id)
+        } else {
           child_count = await this.model.$count(
             db.schema.video_season,
             db.and(
@@ -356,10 +397,10 @@ export class TransformService {
           LocalTrailerCount: 0,
           UserData: {
             // 'UnplayedItemCount'     : 0,
-            PlaybackPositionTicks: 0,
+            PlaybackPositionTicks: user_video_record_list.play_ms,
             PlayCount: 0,
             IsFavorite: has_favorited,
-            Played: false,
+            Played: user_video_record_list.is_complete,
           },
           ChildCount: child_count,
           DisplayPreferencesId: emby_item_id,
@@ -478,6 +519,8 @@ export class TransformService {
           where: db.eq(db.schema.video_season.id, video_episode.video_season_id),
         })
 
+        let user_video_record_episode = await this.getUserVideoRecord(user_id, video_episode.video_list_id, video_episode.id)
+
         emby_item_data = {
           Name: video_episode.title,
           Id: emby_item_id,
@@ -514,11 +557,12 @@ export class TransformService {
           LocalTrailerCount: 0,
           UserData: {
             // 'UnplayedItemCount'     : 0,
-            PlaybackPositionTicks: 0,
+            // PlayedPercentage: 0,
+            PlaybackPositionTicks: user_video_record_episode.play_ms,
             PlayCount: 0,
             IsFavorite: has_favorited,
             // LastPlayedDate: '',
-            Played: false,
+            Played: user_video_record_episode.is_complete,
           },
           SeriesId: this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_LIST, video_episode.video_list_id),
           SeriesName: video_episode_video_title,

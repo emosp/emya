@@ -14,8 +14,21 @@ import { video_subtitle } from './video_subtitle'
 import { video_people } from './video_people'
 import { video_genre } from './video_genre'
 
-export const VideoSeasonRelations = relations(video_season, ({ many }) => ({
+export const LibraryRelations = relations(library, ({ many }) => ({
+  video_lists: many(video_list),
+}))
+
+export const VideoListRelations = relations(video_list, ({ one, many }) => ({
+  library: one(library, {
+    fields: [video_list.video_library_id],
+    references: [library.id],
+  }),
+  user_video_records: many(user_video_record),
+}))
+
+export const VideoSeasonRelations = relations(video_season, ({ one, many }) => ({
   video_episodes: many(video_episode),
+  user_video_records: many(user_video_record),
 }))
 
 export const VideoEpisodeRelations = relations(video_episode, ({ one, many }) => ({
@@ -24,6 +37,7 @@ export const VideoEpisodeRelations = relations(video_episode, ({ one, many }) =>
     references: [video_season.id],
   }),
   video_medias: many(video_media),
+  user_video_records: many(user_video_record),
 }))
 
 export const VideoMediaRelations = relations(video_media, ({ one, many }) => ({
@@ -38,6 +52,21 @@ export const VideoSubtitleRelations = relations(video_subtitle, ({ one }) => ({
   video_media: one(video_media, {
     fields: [video_subtitle.video_media_id],
     references: [video_media.id],
+  }),
+}))
+
+export const UserVideoRecordRelations = relations(user_video_record, ({ one }) => ({
+  video_list: one(video_list, {
+    fields: [user_video_record.video_list_id],
+    references: [video_list.id],
+  }),
+  video_season: one(video_season, {
+    fields: [user_video_record.video_season_id],
+    references: [video_season.id],
+  }),
+  video_episode: one(video_episode, {
+    fields: [user_video_record.video_episode_id],
+    references: [video_episode.id],
   }),
 }))
 

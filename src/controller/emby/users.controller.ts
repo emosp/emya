@@ -9,11 +9,21 @@ import * as argon2 from 'argon2'
 
 import * as db from '@/db'
 import { MySql2Database } from 'drizzle-orm/mysql2'
-import { EmbyService, EMBY_DEFAULT_TIME, EMBY_ITEM_ID_TYPE_VIDEO_LIBRARY, EMBY_ITEM_ID_TYPE_VIDEO_LIST } from '@/controller/emby/emby.service'
+import {
+  EmbyService,
+  EMBY_DEFAULT_TIME,
+  EMBY_ITEM_ID_TYPE_VIDEO_LIBRARY,
+  EMBY_ITEM_ID_TYPE_VIDEO_LIST,
+  EMBY_ITEM_ID_TYPE_VIDEO_EPISODE,
+  EMBY_ITEM_ID_TYPE_VIDEO_SEASON,
+} from '@/controller/emby/emby.service'
 import { TransformService } from '@/controller/emby/transform.service'
 import { randomString } from '@/utils/random'
+import { dayjs } from '@/utils/dayjs'
 
 import { ExternalApi } from '@/utils/request'
+import { VIDEO_TYPE_TV } from '@/db/schema/video_list'
+import { VideoImageTypes } from '@/db/schema/video_image'
 
 @Controller(['/emby/users'])
 export class UsersController {
@@ -314,8 +324,124 @@ export class UsersController {
   }
 
   @Get(':emby_user_id/items/resume')
-  async UserItemsResume() {
-    return this.EmbyService.ItemResponse()
+  async UserItemsResume(@Req() req: any) {
+    // todo: 优化查询方式
+
+    let where: any = [
+      // prettier-ignore
+      db.eq(db.schema.user_video_record.user_id, req.user_id),
+      db.isNotNull(db.schema.user_video_record.play_seconds),
+    ]
+
+    let search_parent_value = req.query.parentid
+    if (search_parent_value) {
+      let parents = this.EmbyService.ItemIdParse(search_parent_value)
+
+      if (parents?.[0] == EMBY_ITEM_ID_TYPE_VIDEO_LIBRARY) {
+        where.push(db.eq(db.schema.library.id, parents[1]))
+      }
+    }
+
+    // prettier-ignore
+    let datas = await this.model
+      .select({
+        record_id: db.schema.user_video_record.id,
+        video_type: db.schema.video_list.video_type,
+        video_list_id: db.schema.user_video_record.video_list_id,
+        video_season_id: db.schema.user_video_record.video_season_id,
+        video_episode_id: db.schema.user_video_record.video_episode_id,
+        video_title: db.schema.video_list.title,
+        video_date_air: db.schema.video_list.date_air,
+        season_title: db.schema.video_season.title,
+        season_number: db.schema.video_season.season_number,
+        episode_title: db.schema.video_episode.title,
+        episode_number: db.schema.video_episode.episode_number,
+        play_second: db.schema.user_video_record.play_seconds,
+        is_complete: db.schema.user_video_record.is_complete,
+      })
+      .from(db.schema.user_video_record)
+      .leftJoin(db.schema.video_list, db.eq(db.schema.video_list.id, db.schema.user_video_record.video_list_id))
+      .leftJoin(db.schema.video_season, db.eq(db.schema.video_season.id, db.schema.user_video_record.video_season_id))
+      .leftJoin(db.schema.video_episode, db.eq(db.schema.video_episode.id, db.schema.user_video_record.video_episode_id))
+      .leftJoin(db.schema.library, db.eq(db.schema.library.id, db.schema.video_list.video_library_id))
+      .where(db.and(...where))
+      .orderBy(db.desc(db.schema.user_video_record.updated_at))
+      .limit(30)
+
+    let video_ids: Array<number> = []
+
+    let rows: any = []
+    for (let data of datas) {
+      let video_list_id = data.video_list_id
+      if (video_ids.includes(video_list_id)) {
+        continue
+      }
+      video_ids.push(video_list_id)
+
+      let data_year = Number(dayjs(data.video_date_air).format('YYYY')),
+        user_video_record = await this.TransformService.formatUserVideoRecord(data),
+        data_video_id = this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_LIST, video_list_id)
+
+      if (data.video_type == VIDEO_TYPE_TV) {
+        let data_episode_id = this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_EPISODE, data.video_episode_id as number)
+        rows.push({
+          Name: data.episode_title,
+          Id: data_episode_id,
+          CanDelete: false,
+          RunTimeTicks: 0,
+          ProductionYear: data_year,
+          IndexNumber: data.episode_number,
+          ParentIndexNumber: data.season_number,
+          IsFolder: false,
+          Type: 'Episode',
+          ParentBackdropItemId: data_video_id,
+          ParentBackdropImageTags: [],
+          UserData: {
+            PlayedPercentage: 0,
+            PlaybackPositionTicks: user_video_record.play_ms,
+            PlayCount: 0,
+            IsFavorite: false,
+            Played: user_video_record.is_complete,
+          },
+          SeriesName: data.video_title,
+          SeriesId: data_video_id,
+          SeriesPrimaryImageTag: '',
+          SeasonName: data.season_title,
+          SeasonId: this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_SEASON, data.video_season_id as number),
+          PrimaryImageAspectRatio: 1.7,
+          ImageTags: {
+            [VideoImageTypes.TYPE_PRIMARY]: data_episode_id,
+          },
+          BackdropImageTags: [],
+          MediaType: 'Video',
+        })
+      } else {
+        rows.push({
+          Name: data.video_title,
+          Id: data_video_id,
+          CanDelete: false,
+          RunTimeTicks: 0,
+          ProductionYear: data_year,
+          IsFolder: false,
+          Type: 'Movie',
+          UserData: {
+            PlayedPercentage: 0,
+            PlaybackPositionTicks: user_video_record.play_ms,
+            PlayCount: 0,
+            IsFavorite: false,
+            Played: user_video_record.is_complete,
+          },
+          PrimaryImageAspectRatio: 0.6,
+          ImageTags: {
+            [VideoImageTypes.TYPE_PRIMARY]: data_video_id,
+          },
+          BackdropImageTags: [],
+          MediaType: 'Video',
+        })
+      }
+    }
+
+    return this.EmbyService.ItemResponse(rows)
   }
 
   @Get(':emby_user_id/items/latest')
@@ -364,16 +490,32 @@ export class UsersController {
       is_favorite = true
     }
 
-    await ExternalApi('/emby/userFavorite', {
-      ...row,
-      is_favorite,
-    }).catch(() => null)
+    if (process.env.API_EXTERNAL) {
+      await ExternalApi('/emby/userFavorite', {
+        ...row,
+        is_favorite,
+      }).catch(() => null)
+    }
+
+    /**
+     * todo: 对于电视类型时 是否完成判断不准确
+     * 对于 hills播放器这种一起使用的来说 会存在显示问题
+     */
+    let user_video_record = await this.TransformService.formatUserVideoRecord()
+
+    if (emby_item_type == EMBY_ITEM_ID_TYPE_VIDEO_LIST) {
+      user_video_record = await this.TransformService.getUserVideoRecord(user_id, emby_item_value)
+    }
+
+    if (emby_item_type == EMBY_ITEM_ID_TYPE_VIDEO_EPISODE) {
+      user_video_record = await this.TransformService.getUserVideoRecord(user_id, null, emby_item_value)
+    }
 
     return {
       IsFavorite: is_favorite,
       PlayCount: 0,
-      PlaybackPositionTicks: 0,
-      Played: true,
+      PlaybackPositionTicks: user_video_record.play_ms,
+      Played: user_video_record.is_complete,
     }
   }
 
@@ -393,16 +535,59 @@ export class UsersController {
       emby_item_type = emby_item[0],
       emby_item_value = emby_item[1]
 
-    // todo: played
+    // todo: played change all
+
+    let where: any = [db.eq(db.schema.user_video_record.user_id, user_id)]
+    if (emby_item_type == EMBY_ITEM_ID_TYPE_VIDEO_LIST) {
+      where.push(db.eq(db.schema.user_video_record.video_list_id, emby_item_value))
+      where.push(db.isNull(db.schema.user_video_record.video_episode_id))
+    }
+
+    if (emby_item_type == EMBY_ITEM_ID_TYPE_VIDEO_EPISODE) {
+      where.push(db.eq(db.schema.user_video_record.video_episode_id, emby_item_value))
+    }
 
     if (req.method == 'POST') {
       is_played = true
     }
 
+    let user_video_record = await this.model.query.user_video_record.findFirst({
+      columns: {
+        play_seconds: true,
+        is_complete: true,
+      },
+      where: db.and(...where),
+    })
+
+    if (user_video_record) {
+      await this.model
+        .update(db.schema.user_video_record)
+        .set({
+          is_complete: is_played,
+          play_seconds: is_played ? 0 : user_video_record.play_seconds,
+        })
+        .where(db.and(...where))
+    }
+
+    let format_user_video_record = await this.TransformService.formatUserVideoRecord(user_video_record)
+
+    let is_favorite = await this.model.query.favorites.findFirst({
+      columns: {
+        id: true,
+      },
+      where: db.and(
+        // prettier-ignore
+        db.eq(db.schema.favorites.user_id, user_id),
+        db.eq(db.schema.favorites.relation_type, emby_item_type),
+        db.eq(db.schema.favorites.relation_id, emby_item_value),
+      ),
+    })
+
     return {
-      IsFavorite: false,
+      IsFavorite: Boolean(is_favorite?.id),
       PlayCount: 0,
-      PlaybackPositionTicks: 0,
+      // todo: 视频时常超出正常时常
+      PlaybackPositionTicks: format_user_video_record.play_ms,
       Played: is_played,
     }
   }

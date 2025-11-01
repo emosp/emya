@@ -149,6 +149,16 @@ export class ShowsController {
       where: db.and(...sql_conditions),
       with: {
         video_medias: with_video_medias,
+        user_video_records: {
+          columns: {
+            play_seconds: true,
+            is_complete: true,
+          },
+          where: db.and(
+            // prettier-ignore
+            db.eq(db.schema.user_video_record.user_id, req.user_id),
+          ),
+        },
       },
     })
 
@@ -170,6 +180,8 @@ export class ShowsController {
       if (!video_medias.length) {
         // continue
       }
+
+      let user_video_record = await this.TransformService.formatUserVideoRecord(episode.user_video_records[0])
 
       rows.push({
         Name: episode.title,
@@ -201,6 +213,13 @@ export class ShowsController {
         Chapters: [],
         MediaSources: has_media_sources ? await this.TransformService.VideoMediaFormat(video_medias) : [],
         MediaType: 'Video',
+        UserData: {
+          PlayedPercentage: 0,
+          PlaybackPositionTicks: user_video_record.play_ms,
+          PlayCount: 0,
+          IsFavorite: false,
+          Played: user_video_record.is_complete,
+        },
       })
     }
 

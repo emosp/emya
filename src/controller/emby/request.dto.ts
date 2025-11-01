@@ -54,27 +54,3 @@ export class ShowEpisodes {
   seasonid: string
 }
 
-export class SessionPlaying {
-  volumelevel: number
-  ismuted: boolean
-  ispaused: boolean
-  repeatmode: string
-  subtitleoffset: number
-  playbackrate: number
-  positionticks: number
-  subtitlestreamindex: number
-  audiostreamindex: number
-  playmethod: string
-  playsessionid: string
-  mediasourceid: string
-  canseek: boolean
-  itemid: string
-  eventname: string
-
-  // 开始和停止时存在
-  nowplayingqueue: []
-  maxstreamingbitrate: number
-  playbackstarttimeticks: number
-  playlistindex: number
-  playlistlength: number
-}

@@ -167,7 +167,7 @@ export class ItemsController {
     )
 
     if (!play_session_has) {
-      this.model.insert(db.schema.user_video_record).values({
+      await this.model.insert(db.schema.user_video_record).values({
         video_list_id,
         video_season_id,
         video_episode_id,

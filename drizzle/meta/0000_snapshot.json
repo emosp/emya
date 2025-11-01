@@ -392,12 +392,24 @@
         }
       },
       "indexes": {
-        "idx_video_record": {
-          "name": "idx_video_record",
+        "idx_list_id": {
+          "name": "idx_list_id",
           "columns": [
-            "video_list_id",
-            "user_id",
-            "is_complete"
+            "video_list_id"
+          ],
+          "isUnique": false
+        },
+        "idx_episode_id": {
+          "name": "idx_episode_id",
+          "columns": [
+            "video_episode_id"
+          ],
+          "isUnique": false
+        },
+        "idx_user_id": {
+          "name": "idx_user_id",
+          "columns": [
+            "user_id"
           ],
           "isUnique": false
         }
