@@ -36,10 +36,14 @@ export class ShowsController {
       throw new NotFoundException()
     }
 
+    let video_list_id = emby_item[1]
+
+    let video_title = await this.TransformService.GetVideoListTitleById(video_list_id)
+
     let seasons = await this.model.query.video_season.findMany({
       where: db.and(
         // prettier-ignore
-        db.eq(db.schema.video_season.video_list_id, emby_item[1]),
+        db.eq(db.schema.video_season.video_list_id, video_list_id),
         db.isNull(db.schema.video_season.deleted_at),
       ),
       with: {
@@ -71,7 +75,7 @@ export class ShowsController {
         IsFolder: true,
         Type: 'Season',
         SeriesId: this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_LIST, season.video_list_id),
-        SeriesName: '',
+        SeriesName: video_title,
         SeriesPrimaryImageTag: 'image',
         Genres: [],
         People: [],
@@ -148,16 +152,15 @@ export class ShowsController {
       },
     })
 
-    let season_number = Number(
-      (
-        await this.model.query.video_season.findFirst({
-          columns: {
-            season_number: true,
-          },
-          where: db.eq(db.schema.video_season.id, query_season_id || episodes[0]?.video_season_id),
-        })
-      )?.season_number,
-    )
+    let season_data: any = await this.model.query.video_season.findFirst({
+      columns: {
+        title: true,
+        season_number: true,
+      },
+      where: db.eq(db.schema.video_season.id, query_season_id || episodes[0]?.video_season_id),
+    })
+
+    let video_title = await this.TransformService.GetVideoListTitleById(episodes[0]?.video_list_id)
 
     let rows: any = []
     for (let episode of episodes) {
@@ -179,16 +182,16 @@ export class ShowsController {
         Overview: episode.description,
         // ProductionYear: Number(dayjs(episode.date_air).format('YYYY')),
         IndexNumber: episode.episode_number,
-        ParentIndexNumber: season_number,
+        ParentIndexNumber: season_data.season_number,
         IsFolder: false,
         Type: 'Episode',
         People: [],
         // ParentBackdropItemId: '',
         ParentBackdropImageTags: [],
         SeriesId: this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_LIST, episode.video_list_id),
-        SeriesName: '',
+        SeriesName: video_title,
         SeasonId: this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_SEASON, episode.video_season_id),
-        SeasonName: '',
+        SeasonName: season_data.title,
         PrimaryImageAspectRatio: 1.7,
         SeriesPrimaryImageTag: '',
         ImageTags: {

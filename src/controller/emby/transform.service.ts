@@ -111,6 +111,17 @@ export class TransformService {
     }
   }
 
+  async GetVideoListTitleById(video_list_id: any) {
+    return (
+      (await this.model.query.video_list.findFirst({
+        columns: {
+          title: true,
+        },
+        where: db.eq(db.schema.video_list.id, video_list_id),
+      })) as any
+    )?.title
+  }
+
   async VideoList(user_id: number, search: any = {}) {
     let sql_db = this.model
       .select({
@@ -389,6 +400,8 @@ export class TransformService {
           return null
         }
 
+        let video_season_video_title = await this.GetVideoListTitleById(video_season.video_list_id)
+
         emby_item_data = {
           Name: video_season.title,
           Id: emby_item_id,
@@ -429,7 +442,7 @@ export class TransformService {
           },
           ChildCount: 0,
           SeriesId: this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_LIST, video_season.video_list_id),
-          SeriesName: '',
+          SeriesName: video_season_video_title,
           DisplayPreferencesId: '',
           PrimaryImageAspectRatio: 0.6,
           SeriesPrimaryImageTag: '',
@@ -455,14 +468,7 @@ export class TransformService {
           return null
         }
 
-        let video_episode_video_title = (
-          (await this.model.query.video_list.findFirst({
-            columns: {
-              title: true,
-            },
-            where: db.eq(db.schema.video_list.id, video_episode.video_list_id),
-          })) as any
-        ).title
+        let video_episode_video_title = await this.GetVideoListTitleById(video_episode.video_list_id)
 
         let video_episode_season_data: any = await this.model.query.video_season.findFirst({
           columns: {
