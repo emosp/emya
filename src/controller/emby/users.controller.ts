@@ -170,7 +170,7 @@ export class UsersController {
 
     let emby_user = await this.TransformService.User(user_id)
 
-    return res.send({
+    return res.code(200).send({
       User: emby_user,
       SessionInfo: {
         PlayState: {
@@ -213,70 +213,7 @@ export class UsersController {
 
   @Get(':emby_user_id/views')
   async UserViews(@Req() req: any) {
-    let user_id = req.user_id
-
-    let user_info: any = await this.model.query.user.findFirst({
-      columns: {
-        folders: true,
-      },
-      where: db.eq(db.schema.user.id, user_id),
-    })
-
-    let user_folders = JSON.parse(user_info.folders || '[]')
-
-    let libraries: any = await this.model.query.library.findMany({
-      columns: {
-        id: true,
-        name: true,
-      },
-      where: db.and(db.inArray(db.schema.library.id, user_folders)),
-      orderBy: db.asc(db.schema.library.id),
-    })
-
-    let emby_server_id = this.EmbyService.Id()
-
-    let rows: any = []
-    for (let library of libraries) {
-      let library_name = library.name,
-        library_id = this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_LIBRARY, library.id)
-
-      rows.push({
-        Name: library_name,
-        ServerId: emby_server_id,
-        Id: library_id,
-        Guid: library_id,
-        Etag: library_id,
-        DateCreated: EMBY_DEFAULT_TIME,
-        DateModified: EMBY_DEFAULT_TIME,
-        CanDelete: false,
-        CanDownload: false,
-        PresentationUniqueKey: library_id,
-        SortName: library_name,
-        ForcedSortName: library_name,
-        ExternalUrls: [],
-        Taglines: [],
-        RemoteTrailers: [],
-        ProviderIds: {},
-        IsFolder: true,
-        ParentId: '0',
-        Type: 'CollectionFolder',
-        UserData: {
-          PlaybackPositionTicks: 0,
-          IsFavorite: false,
-          Played: false,
-        },
-        ChildCount: 1,
-        DisplayPreferencesId: library_id,
-        PrimaryImageAspectRatio: 1,
-        ImageTags: {
-          Primary: library_id,
-        },
-        BackdropImageTags: [],
-        LockedFields: [],
-        LockData: false,
-      })
-    }
-
+    let rows = await this.TransformService.getUserLibrary(req.user_id)
     return this.EmbyService.ItemResponse(rows)
   }
 

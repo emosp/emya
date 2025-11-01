@@ -17,6 +17,7 @@ import { ItemsController } from '@/controller/emby/items.controller'
 import { ShowsController } from '@/controller/emby/shows.controller'
 import { SessionsController } from '@/controller/emby/sessions.controller'
 import { VideosController } from '@/controller/emby/videos.controller'
+import { LibraryController } from '@/controller/emby/library.controller'
 
 @Module({
   controllers: [
@@ -28,6 +29,7 @@ import { VideosController } from '@/controller/emby/videos.controller'
     ShowsController,
     SessionsController,
     VideosController,
+    LibraryController,
   ],
   providers: [
     {

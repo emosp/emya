@@ -1,6 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common'
 
-import { EmbyService, EMBY_ITEM_ID_TYPE_VIDEO_LIST, EMBY_ITEM_ID_TYPE_VIDEO_EPISODE, EMBY_ITEM_ID_TYPE_VIDEO_SEASON, EMBY_ITEM_ID_TYPE_VIDEO_LIBRARY } from '@/controller/emby/emby.service'
+import {
+  EmbyService,
+  EMBY_ITEM_ID_TYPE_VIDEO_LIST,
+  EMBY_ITEM_ID_TYPE_VIDEO_EPISODE,
+  EMBY_ITEM_ID_TYPE_VIDEO_SEASON,
+  EMBY_ITEM_ID_TYPE_VIDEO_LIBRARY,
+  EMBY_DEFAULT_TIME,
+} from '@/controller/emby/emby.service'
 import { MySql2Database } from 'drizzle-orm/mysql2'
 import * as db from '@/db'
 import { dayjs, formatTimeToEmby } from '@/utils/dayjs'
@@ -158,6 +165,72 @@ export class TransformService {
       play_ms,
       is_complete,
     }
+  }
+
+  async getUserLibrary(user_id: number) {
+    let user_info: any = await this.model.query.user.findFirst({
+      columns: {
+        folders: true,
+      },
+      where: db.eq(db.schema.user.id, user_id),
+    })
+
+    let user_folders = JSON.parse(user_info.folders || '[]')
+
+    let libraries: any = await this.model.query.library.findMany({
+      columns: {
+        id: true,
+        name: true,
+      },
+      where: db.and(db.inArray(db.schema.library.id, user_folders)),
+      orderBy: db.asc(db.schema.library.id),
+    })
+
+    let emby_server_id = this.EmbyService.Id()
+
+    let rows: any = []
+    for (let library of libraries) {
+      let library_name = library.name,
+        library_id = this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_LIBRARY, library.id)
+
+      rows.push({
+        Name: library_name,
+        ServerId: emby_server_id,
+        Id: library_id,
+        Guid: library_id,
+        Etag: library_id,
+        DateCreated: EMBY_DEFAULT_TIME,
+        DateModified: EMBY_DEFAULT_TIME,
+        CanDelete: false,
+        CanDownload: false,
+        PresentationUniqueKey: library_id,
+        SortName: library_name,
+        ForcedSortName: library_name,
+        ExternalUrls: [],
+        Taglines: [],
+        RemoteTrailers: [],
+        ProviderIds: {},
+        IsFolder: true,
+        ParentId: '0',
+        Type: 'CollectionFolder',
+        UserData: {
+          PlaybackPositionTicks: 0,
+          IsFavorite: false,
+          Played: false,
+        },
+        ChildCount: 1,
+        DisplayPreferencesId: library_id,
+        PrimaryImageAspectRatio: 1,
+        ImageTags: {
+          Primary: library_id,
+        },
+        BackdropImageTags: [],
+        LockedFields: [],
+        LockData: false,
+      })
+    }
+
+    return rows
   }
 
   async VideoList(user_id: number, search: any = {}) {
