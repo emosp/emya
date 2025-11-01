@@ -657,6 +657,13 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {
@@ -665,6 +672,13 @@
           "columns": [
             "relation_type",
             "relation_id"
+          ],
+          "isUnique": false
+        },
+        "idx_user_id": {
+          "name": "idx_user_id",
+          "columns": [
+            "user_id"
           ],
           "isUnique": false
         }
