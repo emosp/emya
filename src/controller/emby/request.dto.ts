@@ -40,6 +40,7 @@ export class UserItems {
   mediatypes?: string
   sortby?: string
   genreids?: string
+  namestartswith?: string
 }
 
 export class UserItemsLatest {

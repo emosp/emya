@@ -227,7 +227,7 @@ export class UsersController {
       GenreIds: query.genreids?.split(','),
     }
 
-    let query_search_term = query.searchterm
+    let query_search_term = query.searchterm || query.namestartswith
     // 以类型 合集 查询
     if (!query_search_term && (search.IncludeItemTypes.includes('Tag') || search.IncludeItemTypes.includes('BoxSet'))) {
       return this.EmbyService.ItemResponse()

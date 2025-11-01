@@ -269,7 +269,7 @@ export class TransformService {
       }
     }
 
-    let search_searchterm = search.searchterm
+    let search_searchterm = search.searchterm || search.namestartswith
     if (search_searchterm) {
       sql_conditions.push(
         db.or(
