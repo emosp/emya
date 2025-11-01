@@ -241,8 +241,17 @@ export class TransformService {
 
     sql_db.where(db.and(...sql_conditions))
 
+    let sortby = search.sortby || '',
+      sort_by_name: any = db.schema.video_list.updated_at
+    if (sortby.includes('DateCreated')) {
+      sort_by_name = db.schema.video_list.id
+    }
+    if (sortby.includes('ProductionYear') || sortby.includes('PremiereDate')) {
+      sort_by_name = db.schema.video_list.date_air
+    }
+
     let search_sortorder = search.sortorder || 'Descending'
-    sql_db.orderBy(search_sortorder == 'Descending' ? db.desc(db.schema.video_list.updated_at) : db.asc(db.schema.video_list.updated_at))
+    sql_db.orderBy(search_sortorder == 'Descending' ? db.desc(sort_by_name) : db.asc(sort_by_name))
 
     let search_offset = Number(search.startindex || 0)
     if (search_offset > 0) {

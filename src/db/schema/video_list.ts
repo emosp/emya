@@ -57,5 +57,6 @@ export const video_list = mysql.mysqlTable(
     mysql.unique('unx_list').on(table.video_type, table.tmdb_id),
     mysql.index('idx_title').on(table.title),
     mysql.index('idx_origin_title').on(table.origin_title),
+    mysql.index('idx_date_air').on(table.date_air),
   ],
 )

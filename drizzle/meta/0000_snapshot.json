@@ -847,6 +847,13 @@
             "origin_title"
           ],
           "isUnique": false
+        },
+        "idx_date_air": {
+          "name": "idx_date_air",
+          "columns": [
+            "date_air"
+          ],
+          "isUnique": false
         }
       },
       "foreignKeys": {},

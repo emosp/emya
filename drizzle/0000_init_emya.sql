@@ -199,6 +199,7 @@ CREATE INDEX `idx_image` ON `video_image` (`relation_type`,`relation_id`);--> st
 CREATE INDEX `idx_user_id` ON `video_image` (`user_id`);--> statement-breakpoint
 CREATE INDEX `idx_title` ON `video_list` (`title`);--> statement-breakpoint
 CREATE INDEX `idx_origin_title` ON `video_list` (`origin_title`);--> statement-breakpoint
+CREATE INDEX `idx_date_air` ON `video_list` (`date_air`);--> statement-breakpoint
 CREATE INDEX `idx_media` ON `video_media` (`video_list_id`,`video_season_id`,`video_episode_id`);--> statement-breakpoint
 CREATE INDEX `idx_user_id` ON `video_media` (`user_id`);--> statement-breakpoint
 CREATE INDEX `idx_video_media_id` ON `video_subtitle` (`video_media_id`);--> statement-breakpoint
