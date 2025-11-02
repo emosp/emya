@@ -401,6 +401,49 @@ export class UsersController {
     return []
   }
 
+  @Post(':emby_user_id/items/:emby_item_id/HideFromResume')
+  async UserItemsInfoHideFromResume(@Req() req: any, @Param('emby_item_id') emby_item_id: string) {
+    let emby_item = this.EmbyService.ItemIdParse(emby_item_id)
+    if (!emby_item) {
+      throw new NotFoundException()
+    }
+
+    let user_id = req.user_id,
+      emby_item_type = emby_item[0],
+      emby_item_value = emby_item[1]
+
+    let video_list_id: any = emby_item_value
+    if (emby_item_type == EMBY_ITEM_ID_TYPE_VIDEO_EPISODE) {
+      video_list_id = (
+        (await this.model.query.video_episode.findFirst({
+          columns: {
+            video_list_id: true,
+          },
+          where: db.eq(db.schema.video_episode.id, emby_item_value),
+        })) as any
+      ).video_list_id
+    }
+
+    await this.model
+      .update(db.schema.user_video_record)
+      .set({
+        play_seconds: null,
+      })
+      .where(
+        // prettier-ignore
+        db.and(
+          db.eq(db.schema.user_video_record.user_id, user_id),
+          db.eq(db.schema.user_video_record.video_list_id, video_list_id),
+        ),
+      )
+
+    return {
+      IsFavorite: false,
+      Played: false,
+      PlayCount: 0,
+    }
+  }
+
   @All(':emby_user_id/FavoriteItems/:emby_item_id/:is_delete?')
   async UserFavoriteitems(@Req() req: any, @Param('emby_item_id') emby_item_id: string) {
     if (!['POST', 'DELETE'].includes(req.method)) {
