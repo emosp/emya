@@ -391,6 +391,16 @@ export class UsersController {
     return this.TransformService.ItemInfo(req.user_id, emby_item_id)
   }
 
+  @Get(':emby_user_id/items/:emby_item_id/LocalTrailers')
+  async UserItemsInfoLocalTrailers(@Req() req: any, @Param('emby_item_id') emby_item_id: string) {
+    return []
+  }
+
+  @Get(':emby_user_id/items/:emby_item_id/SpecialFeatures')
+  async UserItemsInfoSpecialFeatures(@Req() req: any, @Param('emby_item_id') emby_item_id: string) {
+    return []
+  }
+
   @All(':emby_user_id/FavoriteItems/:emby_item_id/:is_delete?')
   async UserFavoriteitems(@Req() req: any, @Param('emby_item_id') emby_item_id: string) {
     if (!['POST', 'DELETE'].includes(req.method)) {
