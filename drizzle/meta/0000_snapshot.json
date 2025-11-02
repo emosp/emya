@@ -1032,6 +1032,13 @@
             "user_id"
           ],
           "isUnique": false
+        },
+        "idx_video_episode_id": {
+          "name": "idx_video_episode_id",
+          "columns": [
+            "video_episode_id"
+          ],
+          "isUnique": false
         }
       },
       "foreignKeys": {},

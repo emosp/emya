@@ -142,6 +142,7 @@ export class ShowsController {
             where: db.isNull(db.schema.video_subtitle.deleted_at),
           },
         },
+        where: db.isNull(db.schema.video_media.deleted_at),
       }
     }
 

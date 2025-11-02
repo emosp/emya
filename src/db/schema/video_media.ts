@@ -90,5 +90,6 @@ export const video_media = mysql.mysqlTable(
     // prettier-ignore
     mysql.index('idx_media').on(table.video_list_id, table.video_season_id, table.video_episode_id),
     mysql.index('idx_user_id').on(table.user_id),
+    mysql.index('idx_video_episode_id').on(table.video_episode_id),
   ],
 )
