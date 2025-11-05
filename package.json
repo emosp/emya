@@ -9,9 +9,9 @@
     "build": "nest build",
     "start": "nest start",
     "dev": "nest start --watch",
-    "prod": "node dist/main",
+    "prod": "node dist/src/main.js",
     "cli:dev": "ts-node -r tsconfig-paths/register cli.ts",
-    "cli": "node dist/cli",
+    "cli": "node dist/src/cli.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
   },
