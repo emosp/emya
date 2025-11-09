@@ -57,12 +57,17 @@ export class ShowsController {
       },
     })
 
+    let server_id = this.EmbyService.Id(),
+      video_list_item_id = this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_LIST, video_list_id)
+
     let rows: any = []
     for (let season of seasons) {
-      let season_item_id = this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_SEASON, season.id)
+      let season_item_id = this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_SEASON, season.id),
+        season_title = season.title || `第 ${season.season_number} 季`
       rows.push({
-        Name: season.title || `第 ${season.season_number} 季`,
-        // 'ServerId'              : this.EmbyService.Id(),
+        Name: season_title,
+        SortName: season_title,
+        ServerId: server_id,
         Id: season_item_id,
         ImageTags: {
           [VideoImageTypes.TYPE_PRIMARY]: season_item_id,
@@ -73,14 +78,18 @@ export class ShowsController {
         Overview: season.description,
         IndexNumber: season.season_number,
         IsFolder: true,
+        ParentId: video_list_item_id,
         Type: 'Season',
-        SeriesId: this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_LIST, season.video_list_id),
+        SeriesId: video_list_item_id,
         SeriesName: video_title,
         SeriesPrimaryImageTag: 'image',
         Genres: [],
         People: [],
         GenreItems: [],
         ChildCount: season.video_episodes.length,
+        // RecursiveItemCount: 0,
+        Etag: season_item_id,
+        DateCreated: formatTimeToEmby(season.created_at),
       })
     }
 
@@ -173,6 +182,8 @@ export class ShowsController {
 
     let video_title = await this.TransformService.GetVideoListTitleById(episodes[0]?.video_list_id)
 
+    let server_id = this.EmbyService.Id()
+
     let rows: any = []
     for (let episode of episodes) {
       let episode_item_id = this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_EPISODE, episode.id),
@@ -186,7 +197,10 @@ export class ShowsController {
 
       rows.push({
         Name: episode.title,
-        // ServerId: this.EmbyService.Id(),
+        SortName: episode.title,
+        Path: this.EmbyService.DefaultPath(),
+        // Genres: [],
+        ServerId: server_id,
         Id: episode_item_id,
         CanDownload: true,
         SupportsSync: true,

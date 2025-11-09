@@ -18,4 +18,23 @@ export class LibraryController {
     let rows = await this.TransformService.getUserLibrary(req.user_id)
     return this.EmbyService.ItemResponse(rows)
   }
+
+  @Get('VirtualFolders')
+  async ShowVirtualFolders(@Req() req: any) {
+    let datas = await this.TransformService.getUserLibrary(req.user_id)
+
+    let rows: any = []
+    for (let data of datas) {
+      rows.push({
+        Name: data.Name,
+        Locations: [],
+        LibraryOptions: {},
+        ItemId: data.Id,
+        Id: data.Id,
+        Guid: data.Guid,
+      })
+    }
+
+    return rows
+  }
 }

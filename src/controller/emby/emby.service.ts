@@ -13,6 +13,18 @@ export const EMBY_DEFAULT_TIME = '0001-01-01T00:00:00.0000000Z'
 
 @Injectable()
 export class EmbyService {
+  constructor(@Inject('REQUEST') private readonly request: any) {}
+
+  ProxyName() {
+    let has_referer = Boolean(this.request.headers['referer']) ? 'proxy' : null
+    return this.request.headers['emos_proxy_name'] || has_referer
+  }
+
+  DefaultPath() {
+    // 此处路径好像会影响到 Infuse 播放
+    return '/.strm'
+  }
+
   ServerName() {
     return process.env.APP_NAME
   }

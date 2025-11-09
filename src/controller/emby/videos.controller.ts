@@ -33,6 +33,8 @@ export class VideosController {
    * 安卓 yamby 1.6.2.16 会请求多次这个接口
    *
    * 其余大多数是 跳转 DirectStreamUrl 地址
+   * 
+   * Infuse 会自己拼接并请求地址 并加入 Static=true
    */
   @Get(':emby_media_uuid/:emby_media_name')
   async VideoPlay(@Param('emby_media_uuid') emby_media_uuid: string, @Query('line') line: string, @Req() req: any, @Res() res: any) {

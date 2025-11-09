@@ -11,6 +11,7 @@ import { EmbyService } from '@/controller/emby/emby.service'
 import { TransformService } from '@/controller/emby/transform.service'
 
 import { BaseController } from '@/controller/emby/base.controller'
+import { DisplayPreferencesController } from '@/controller/emby/displayPreferences.controller'
 import { UsersController } from '@/controller/emby/users.controller'
 import { SystemController } from '@/controller/emby/system.controller'
 import { ItemsController } from '@/controller/emby/items.controller'
@@ -23,6 +24,7 @@ import { LibraryController } from '@/controller/emby/library.controller'
   controllers: [
     // prettier-ignore
     BaseController,
+    DisplayPreferencesController,
     UsersController,
     SystemController,
     ItemsController,

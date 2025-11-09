@@ -241,6 +241,7 @@ export class TransformService {
         video_type: db.schema.video_list.video_type,
         title: db.schema.video_list.title,
         date_air: db.schema.video_list.date_air,
+        created_at: db.schema.video_list.created_at,
       })
       .from(db.schema.video_list)
 
@@ -342,6 +343,8 @@ export class TransformService {
           .where(db.and(...sql_conditions))
       )[0]['count']
 
+    let server_id = this.EmbyService.Id()
+
     let datas: any = []
     for (let row of rows) {
       let is_movie = row.video_type == VideoTypes.VIDEO_TYPE_MOVIE,
@@ -349,8 +352,18 @@ export class TransformService {
 
       datas.push({
         Name: row.title,
+        ServerId: server_id,
         Id: row_id,
-        Path: '/.strm',
+        // Etag: row_id,
+        DateCreated: formatTimeToEmby(row.created_at),
+        // SortName: row.title,
+        Path: this.EmbyService.DefaultPath(),
+        // Overview: '',
+        Genres: [],
+        // ParentId: 'emos',
+        People: [],
+        GenreItems: [],
+        // AirDays: [],
         ProductionYear: Number(dayjs(row.date_air).format('YYYY')),
         ProviderIds: {
           Tmdb: row.tmdb_id,
@@ -358,12 +371,14 @@ export class TransformService {
         IsFolder: !is_movie,
         Type: is_movie ? 'Movie' : 'Series',
         UserData: {
-          // 'UnplayedItemCount'     : 0,
+          // UnplayedItemCount: 0,
           PlaybackPositionTicks: 0,
           PlayCount: 0,
           IsFavorite: false,
           Played: false,
         },
+        // RecursiveItemCount: 0,
+        // ChildCount: 0,
         PrimaryImageAspectRatio: 0.67,
         ImageTags: {
           [VideoImageTypes.TYPE_PRIMARY]: row_id,
@@ -414,6 +429,61 @@ export class TransformService {
       user_is_can_down = Boolean(user?.is_can_down)
 
     switch (emby_item_type) {
+      case EMBY_ITEM_ID_TYPE_VIDEO_LIBRARY:
+        // todo: user library
+        let video_library = await this.model.query.library.findFirst({
+          columns: {
+            name: true,
+          },
+          where: db.and(
+            // prettier-ignore
+            db.eq(db.schema.library.id, emby_item_value),
+            db.isNull(db.schema.library.deleted_at),
+          ),
+        })
+
+        if (!video_library) {
+          return null
+        }
+
+        emby_item_data = {
+          Name: video_library.name,
+          Id: emby_item_id,
+          Guid: emby_item_id,
+          Etag: emby_item_id,
+          // DateCreated: formatTimeToEmby(video_library.created_at),
+          // DateModified: formatTimeToEmby(video_library.updated_at),
+          CanDelete: false,
+          CanDownload: false,
+          PresentationUniqueKey: emby_item_id,
+          // SupportsSync: true,
+          SortName: video_library.name,
+          ForcedSortName: video_library.name,
+          // ExternalUrls: [],
+          // Taglines: [],
+          // RemoteTrailers: [],
+          // ProviderIds: {},
+          IsFolder: true,
+          // ParentId: 'emya',
+          Type: 'CollectionFolder',
+          UserData: {
+            PlaybackPositionTicks: 0,
+            IsFavorite: false,
+            Played: false,
+          },
+          // ChildCount: 0,
+          // DisplayPreferencesId: emby_item_id,
+          PrimaryImageAspectRatio: 1.7,
+          ImageTags: {
+            [VideoImageTypes.TYPE_PRIMARY]: emby_item_id,
+          },
+          BackdropImageTags: [],
+          // LockedFields: [],
+          LockData: true,
+          // Subviews: [],
+        }
+        break
+
       case EMBY_ITEM_ID_TYPE_VIDEO_LIST:
         let video_list = await this.model.query.video_list.findFirst({
           where: db.and(
@@ -429,13 +499,13 @@ export class TransformService {
 
         let video_type = video_list.video_type,
           is_movie = video_type == VideoTypes.VIDEO_TYPE_MOVIE,
-          child_count = 0,
+          video_list_child_count = 0,
           user_video_record_list = await this.formatUserVideoRecord()
 
         if (is_movie) {
           user_video_record_list = await this.getUserVideoRecord(user_id, video_list.id)
         } else {
-          child_count = await this.model.$count(
+          video_list_child_count = await this.model.$count(
             db.schema.video_season,
             db.and(
               // prettier-ignore
@@ -484,7 +554,8 @@ export class TransformService {
             IsFavorite: has_favorited,
             Played: user_video_record_list.is_complete,
           },
-          ChildCount: child_count,
+          ChildCount: video_list_child_count,
+          RecursiveItemCount: video_list_child_count,
           DisplayPreferencesId: emby_item_id,
           AirDays: [],
           PrimaryImageAspectRatio: 0.67,
@@ -563,7 +634,14 @@ export class TransformService {
             IsFavorite: has_favorited,
             Played: false,
           },
-          ChildCount: 0,
+          ChildCount: await this.model.$count(
+            db.schema.video_episode,
+            db.and(
+              // prettier-ignore
+              db.eq(db.schema.video_episode.video_season_id, emby_item_value),
+              db.isNull(db.schema.video_episode.deleted_at),
+            ),
+          ),
           SeriesId: this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_LIST, video_season.video_list_id),
           SeriesName: video_season_video_title,
           DisplayPreferencesId: '',
@@ -671,7 +749,7 @@ export class TransformService {
     return {
       ...emby_item_data,
       ServerId: this.EmbyService.Id(),
-      Etag: '',
+      Etag: emby_item_id,
     }
   }
 
