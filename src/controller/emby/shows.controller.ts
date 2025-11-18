@@ -90,6 +90,13 @@ export class ShowsController {
         // RecursiveItemCount: 0,
         Etag: season_item_id,
         DateCreated: formatTimeToEmby(season.created_at),
+        UserData: {
+          UnplayedItemCount: season.video_episodes.length,
+          PlaybackPositionTicks: 0,
+          PlayCount: 0,
+          IsFavorite: false,
+          Played: false,
+        },
       })
     }
 
