@@ -778,8 +778,8 @@ export class TransformService {
     let rows: any = []
 
     for (let video_media of video_medias) {
-      let file_matadata: any = video_media.file_matadata || '[]',
-        format_video = FormatVideo(JSON.parse(file_matadata)),
+      let file_matadata: any = video_media.file_matadata || {},
+        format_video = FormatVideo(typeof file_matadata == 'string' ? JSON.parse(file_matadata) : file_matadata),
         media_streams: Array<any> = format_video.streams
 
       let data_uuid = video_media.uuid,
