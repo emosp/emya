@@ -142,7 +142,7 @@ export class ShowsController {
           name: true,
           file_size: true,
           file_second: true,
-          file_streams: true,
+          file_matadata: true,
           file_container: true,
           file_chapters: true,
           path_type: true,
@@ -194,13 +194,14 @@ export class ShowsController {
     let rows: any = []
     for (let episode of episodes) {
       let episode_item_id = this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_EPISODE, episode.id),
-        video_medias: any = episode.video_medias
+        video_medias: any = episode.video_medias,
+        video_media_first_file_second = video_medias[0]?.file_second
 
       if (!video_medias.length) {
         // continue
       }
 
-      let user_video_record = await this.TransformService.formatUserVideoRecord(episode.user_video_records[0])
+      let user_video_record = await this.TransformService.formatUserVideoRecord(episode.user_video_records[0], video_media_first_file_second)
 
       rows.push({
         Name: episode.title,
@@ -212,7 +213,7 @@ export class ShowsController {
         CanDownload: true,
         SupportsSync: true,
         PremiereDate: formatTimeToEmby(episode.date_air),
-        RunTimeTicks: (video_medias[0]?.file_second as any) * 10000000,
+        RunTimeTicks: video_media_first_file_second * 10000000,
         Overview: episode.description,
         // ProductionYear: Number(dayjs(episode.date_air).format('YYYY')),
         IndexNumber: episode.episode_number,
@@ -236,7 +237,7 @@ export class ShowsController {
         MediaSources: has_media_sources ? await this.TransformService.VideoMediaFormat(video_medias) : [],
         MediaType: 'Video',
         UserData: {
-          PlayedPercentage: 0,
+          PlayedPercentage: user_video_record.percentage,
           PlaybackPositionTicks: user_video_record.play_ms,
           PlayCount: 0,
           IsFavorite: false,

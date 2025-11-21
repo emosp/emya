@@ -360,6 +360,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "video_media_id": {
+          "name": "video_media_id",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "play_seconds": {
           "name": "play_seconds",
           "type": "bigint unsigned",
@@ -403,6 +410,13 @@
           "name": "idx_episode_id",
           "columns": [
             "video_episode_id"
+          ],
+          "isUnique": false
+        },
+        "idx_video_media_id": {
+          "name": "idx_video_media_id",
+          "columns": [
+            "video_media_id"
           ],
           "isUnique": false
         },
@@ -966,8 +980,8 @@
           "notNull": false,
           "autoincrement": false
         },
-        "file_streams": {
-          "name": "file_streams",
+        "file_matadata": {
+          "name": "file_matadata",
           "type": "json",
           "primaryKey": false,
           "notNull": false,

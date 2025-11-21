@@ -25,6 +25,10 @@ export const user_video_record = mysql.mysqlTable(
       mode: 'number',
       unsigned: true,
     }),
+    video_media_id: mysql.bigint({
+      mode: 'number',
+      unsigned: true,
+    }),
     play_seconds: mysql.bigint({
       mode: 'number',
       unsigned: true,
@@ -42,6 +46,7 @@ export const user_video_record = mysql.mysqlTable(
     // prettier-ignore
     mysql.index('idx_list_id').on(table.video_list_id),
     mysql.index('idx_episode_id').on(table.video_episode_id),
+    mysql.index('idx_video_media_id').on(table.video_media_id),
     mysql.index('idx_user_id').on(table.user_id),
   ],
 )

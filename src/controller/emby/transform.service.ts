@@ -13,6 +13,7 @@ import * as db from '@/db'
 import { dayjs, formatTimeToEmby } from '@/utils/dayjs'
 
 import { encode } from '@/utils/hashids'
+import { FormatVideo } from '@/utils/metadata'
 import { VideoTypes } from '@/db/schema/video_list'
 import { VideoImageTypes } from '@/db/schema/video_image'
 
@@ -144,26 +145,45 @@ export class TransformService {
       columns: {
         play_seconds: true,
         is_complete: true,
+        video_media_id: true,
       },
       where: db.and(...where),
     })
 
-    return await this.formatUserVideoRecord(data)
+    let file_second: number = 0
+
+    if (data?.video_media_id) {
+      file_second = (
+        (await this.model.query.video_media.findFirst({
+          columns: {
+            file_second: true,
+          },
+          where: db.eq(db.schema.video_media.id, data.video_media_id),
+        })) as any
+      ).file_second
+    }
+
+    return await this.formatUserVideoRecord(data, file_second)
   }
 
-  async formatUserVideoRecord(data: any = null) {
+  async formatUserVideoRecord(data: any = null, media_second: number | null = 0) {
     let play_ms = 0,
-      is_complete = false
+      is_complete = false,
+      percentage = 0
 
-    // todo: 播放百分比
     if (data) {
-      play_ms = (data?.play_seconds || 0) * 10000000
+      let play_seconds = data?.play_seconds || 0
+      play_ms = play_seconds * 10000000
       is_complete = Boolean(data?.is_complete)
+      if (media_second && play_seconds) {
+        percentage = parseFloat(((play_seconds / media_second) * 100).toFixed(15))
+      }
     }
 
     return {
       play_ms,
       is_complete,
+      percentage,
     }
   }
 
@@ -549,6 +569,7 @@ export class TransformService {
           LocalTrailerCount: 0,
           UserData: {
             // 'UnplayedItemCount'     : 0,
+            PlayedPercentage: user_video_record_list.percentage,
             PlaybackPositionTicks: user_video_record_list.play_ms,
             PlayCount: 0,
             IsFavorite: has_favorited,
@@ -717,7 +738,7 @@ export class TransformService {
           LocalTrailerCount: 0,
           UserData: {
             // 'UnplayedItemCount'     : 0,
-            // PlayedPercentage: 0,
+            PlayedPercentage: user_video_record_episode.percentage,
             PlaybackPositionTicks: user_video_record_episode.play_ms,
             PlayCount: 0,
             IsFavorite: has_favorited,
@@ -757,12 +778,9 @@ export class TransformService {
     let rows: any = []
 
     for (let video_media of video_medias) {
-      let media_streams: any = [],
-        file_streams: any = video_media.file_streams || '[]'
-
-      // todo: 视频元信息填充
-      // for (let file_stream of JSON.parse(file_streams)) {
-      // }
+      let file_matadata: any = video_media.file_matadata || '[]',
+        format_video = FormatVideo(JSON.parse(file_matadata)),
+        media_streams: Array<any> = format_video.streams
 
       let data_uuid = video_media.uuid,
         file_second = video_media.file_second
@@ -822,6 +840,7 @@ export class TransformService {
           SupportsProbing: false,
           MediaStreams: media_streams,
           Formats: [],
+          Bitrate: format_video.bit_rate,
           RequiredHttpHeaders: {},
           DirectStreamUrl: play_url,
           AddApiKeyToDirectStreamUrl: true,
@@ -859,7 +878,7 @@ export class TransformService {
         name: true,
         file_size: true,
         file_second: true,
-        file_streams: true,
+        file_matadata: true,
         file_container: true,
         file_chapters: true,
         path_type: true,

@@ -2,6 +2,7 @@ import { Controller, Inject, Req, Res, Get, Post, Delete, Put, Param, Query, Bod
 
 import * as db from '@/db'
 import { MySql2Database } from 'drizzle-orm/mysql2'
+import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager'
 import { EMBY_ITEM_ID_TYPE_VIDEO_LIST, EMBY_ITEM_ID_TYPE_VIDEO_EPISODE, EmbyService } from '@/controller/emby/emby.service'
 import { formatTimeToEmby } from '@/utils/dayjs'
 
@@ -10,6 +11,7 @@ export class SessionsController {
   constructor(
     @Inject('REQUEST') private readonly request: any,
     @Inject('DB') private model: MySql2Database<typeof db.schema>,
+    @Inject(CACHE_MANAGER) private cache: Cache,
     private EmbyService: EmbyService,
   ) {}
 
@@ -89,6 +91,30 @@ export class SessionsController {
       return res.status(422).send()
     }
 
+    let video_media_uuid = body_parse.mediasourceid.split('_')[0] || null,
+      playing_media_data_cache_name = `playing_media_data_${video_media_uuid}`,
+      playing_media_data: {
+        id: number
+        file_second: number
+      } = JSON.parse((await this.cache.get(playing_media_data_cache_name)) || '[]')
+
+    if (!playing_media_data.id && video_media_uuid) {
+      playing_media_data = (await this.model.query.video_media.findFirst({
+        columns: {
+          id: true,
+          file_second: true,
+        },
+        where: db.eq(db.schema.video_media.uuid, video_media_uuid),
+      })) as any
+
+      await this.cache.set(playing_media_data_cache_name, JSON.stringify(playing_media_data), 1000 * 60 * 60)
+    }
+
+    let video_media_id = playing_media_data.id
+    if (!video_media_id) {
+      return res.status(422).send('error video media id')
+    }
+
     let emby_item_type = emby_item[0],
       emby_item_value = emby_item[1]
 
@@ -102,10 +128,14 @@ export class SessionsController {
       where.push(db.eq(db.schema.user_video_record.video_episode_id, emby_item_value))
     }
 
+    let play_seconds = body_parse.positionticks / 10000000
+
     await this.model
       .update(db.schema.user_video_record)
       .set({
-        play_seconds: body_parse.positionticks / 10000000,
+        play_seconds,
+        video_media_id,
+        is_complete: playing_media_data.file_second - play_seconds < 60 * 5,
       })
       .where(db.and(...where))
     return res.status(204).send()

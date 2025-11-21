@@ -66,7 +66,7 @@ export const video_media = mysql.mysqlTable(
       unsigned: true,
     }),
     // 元信息
-    file_streams: mysql.json(),
+    file_matadata: mysql.json(),
     // 视频容器 mkv mp4 等 暂未用到
     file_container: mysql.varchar({
       length: 255,

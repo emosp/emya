@@ -279,7 +279,6 @@ export class UsersController {
       }
     }
 
-    // prettier-ignore
     let datas = await this.model
       .select({
         record_id: db.schema.user_video_record.id,
@@ -293,7 +292,8 @@ export class UsersController {
         season_number: db.schema.video_season.season_number,
         episode_title: db.schema.video_episode.title,
         episode_number: db.schema.video_episode.episode_number,
-        play_second: db.schema.user_video_record.play_seconds,
+        play_seconds: db.schema.user_video_record.play_seconds,
+        media_second: db.schema.video_media.file_second,
         is_complete: db.schema.user_video_record.is_complete,
       })
       .from(db.schema.user_video_record)
@@ -301,6 +301,7 @@ export class UsersController {
       .leftJoin(db.schema.video_season, db.eq(db.schema.video_season.id, db.schema.user_video_record.video_season_id))
       .leftJoin(db.schema.video_episode, db.eq(db.schema.video_episode.id, db.schema.user_video_record.video_episode_id))
       .leftJoin(db.schema.library, db.eq(db.schema.library.id, db.schema.video_list.video_library_id))
+      .leftJoin(db.schema.video_media, db.eq(db.schema.video_media.id, db.schema.user_video_record.video_media_id))
       .where(db.and(...where))
       .orderBy(db.desc(db.schema.user_video_record.updated_at))
       .limit(30)
@@ -316,7 +317,7 @@ export class UsersController {
       video_ids.push(video_list_id)
 
       let data_year = Number(dayjs(data.video_date_air).format('YYYY')),
-        user_video_record = await this.TransformService.formatUserVideoRecord(data),
+        user_video_record = await this.TransformService.formatUserVideoRecord(data, data.media_second),
         data_video_id = this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_LIST, video_list_id)
 
       if (data.video_type == VIDEO_TYPE_TV) {
@@ -334,7 +335,7 @@ export class UsersController {
           ParentBackdropItemId: data_video_id,
           ParentBackdropImageTags: [],
           UserData: {
-            PlayedPercentage: 0,
+            PlayedPercentage: user_video_record.percentage,
             PlaybackPositionTicks: user_video_record.play_ms,
             PlayCount: 0,
             IsFavorite: false,
@@ -362,7 +363,7 @@ export class UsersController {
           IsFolder: false,
           Type: 'Movie',
           UserData: {
-            PlayedPercentage: 0,
+            PlayedPercentage: user_video_record.percentage,
             PlaybackPositionTicks: user_video_record.play_ms,
             PlayCount: 0,
             IsFavorite: false,

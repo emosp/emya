@@ -52,6 +52,7 @@ CREATE TABLE `user_video_record` (
 	`video_list_id` bigint unsigned NOT NULL,
 	`video_season_id` bigint unsigned,
 	`video_episode_id` bigint unsigned,
+	`video_media_id` bigint unsigned,
 	`play_seconds` bigint unsigned,
 	`is_complete` boolean,
 	`user_id` bigint unsigned NOT NULL,
@@ -135,7 +136,7 @@ CREATE TABLE `video_media` (
 	`status` varchar(255) NOT NULL,
 	`file_size` bigint unsigned,
 	`file_second` bigint unsigned,
-	`file_streams` json,
+	`file_matadata` json,
 	`file_container` varchar(255),
 	`file_chapters` json,
 	`path_type` varchar(255),
@@ -194,7 +195,10 @@ CREATE TABLE `video_subtitle` (
 --> statement-breakpoint
 CREATE INDEX `idx_name` ON `library` (`name`);--> statement-breakpoint
 CREATE INDEX `idx_user_id` ON `token` (`user_id`);--> statement-breakpoint
-CREATE INDEX `idx_video_record` ON `user_video_record` (`video_list_id`,`user_id`,`is_complete`);--> statement-breakpoint
+CREATE INDEX `idx_list_id` ON `user_video_record` (`video_list_id`);--> statement-breakpoint
+CREATE INDEX `idx_episode_id` ON `user_video_record` (`video_episode_id`);--> statement-breakpoint
+CREATE INDEX `idx_video_media_id` ON `user_video_record` (`video_media_id`);--> statement-breakpoint
+CREATE INDEX `idx_user_id` ON `user_video_record` (`user_id`);--> statement-breakpoint
 CREATE INDEX `idx_image` ON `video_image` (`relation_type`,`relation_id`);--> statement-breakpoint
 CREATE INDEX `idx_user_id` ON `video_image` (`user_id`);--> statement-breakpoint
 CREATE INDEX `idx_title` ON `video_list` (`title`);--> statement-breakpoint

@@ -46,6 +46,7 @@ export const VideoMediaRelations = relations(video_media, ({ one, many }) => ({
     references: [video_episode.id],
   }),
   subtitles: many(video_subtitle),
+  user_video_records: many(user_video_record),
 }))
 
 export const VideoSubtitleRelations = relations(video_subtitle, ({ one }) => ({
@@ -67,6 +68,10 @@ export const UserVideoRecordRelations = relations(user_video_record, ({ one }) =
   video_episode: one(video_episode, {
     fields: [user_video_record.video_episode_id],
     references: [video_episode.id],
+  }),
+  video_media: one(video_media, {
+    fields: [user_video_record.video_media_id],
+    references: [video_media.id],
   }),
 }))
 
