@@ -128,14 +128,15 @@ export class SessionsController {
       where.push(db.eq(db.schema.user_video_record.video_episode_id, emby_item_value))
     }
 
-    let play_seconds = body_parse.positionticks / 10000000
+    let play_seconds = body_parse.positionticks / 10000000,
+      file_second = playing_media_data.file_second
 
     await this.model
       .update(db.schema.user_video_record)
       .set({
         play_seconds,
         video_media_id,
-        is_complete: playing_media_data.file_second - play_seconds < 60 * 5,
+        is_complete: file_second ? file_second - play_seconds < 60 * 5 : false,
       })
       .where(db.and(...where))
     return res.status(204).send()
