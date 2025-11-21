@@ -33,6 +33,7 @@ export const FormatVideo = (info: {
           TimeBase: stream.time_base,
           // VideoRange: 'HDR 10',
           // DisplayTitle: '4K HDR 10 HEVC',
+          DisplayTitle: `${stream.height}P ${stream.codec_name}`,
           IsInterlaced: false,
           BitRate: bit_rate,
           // BitDepth: 10,
@@ -44,7 +45,7 @@ export const FormatVideo = (info: {
           Width: stream.width,
           AverageFrameRate: Number(stream.avg_frame_rate.split('/')[0]),
           RealFrameRate: Number(stream.r_frame_rate.split('/')[0]),
-          // Profile: 'Main 10',
+          Profile: stream.profile,
           Type: 'Video',
           AspectRatio: stream.display_aspect_ratio,
           Index: stream_index,
@@ -63,13 +64,14 @@ export const FormatVideo = (info: {
         break
       case 'audio':
         let audio_codec = stream.codec_name,
-          audio_language = stream.tags.language || 'unknow',
+          audio_language = stream.tags.language || '',
+          audio_title = stream.tags.title || '',
           audio_channel_layout = stream.channel_layout
         streams.push({
           Codec: audio_codec,
           Language: audio_language,
           TimeBase: stream.time_base,
-          DisplayTitle: `${audio_language} ${audio_codec} ${audio_channel_layout}`,
+          DisplayTitle: `${audio_title} ${audio_codec} ${audio_channel_layout}`,
           DisplayLanguage: audio_language,
           IsInterlaced: false,
           ChannelLayout: audio_channel_layout,
