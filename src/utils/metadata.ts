@@ -65,7 +65,7 @@ export const FormatVideo = (info: {
       case 'audio':
         let audio_codec = stream.codec_name,
           audio_language = stream.tags.language || '',
-          audio_title = stream.tags.title || '',
+          audio_title = stream.tags.title || audio_language,
           audio_channel_layout = stream.channel_layout
         streams.push({
           Codec: audio_codec,
@@ -97,7 +97,7 @@ export const FormatVideo = (info: {
       case 'subtitle':
         let subtitle_codec = stream.codec_name,
           subtitle_language = stream.tags.language || 'unknow',
-          subtitle_title = stream.tags.title || 'unknow'
+          subtitle_title = stream.tags.title || subtitle_language
 
         streams.push({
           Codec: subtitle_codec,
