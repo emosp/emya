@@ -134,7 +134,7 @@ export class SessionsController {
     await this.model
       .update(db.schema.user_video_record)
       .set({
-        play_seconds,
+        play_seconds: play_seconds > 0 ? play_seconds : 0,
         video_media_id,
         is_complete: file_second ? file_second - play_seconds < 60 * 5 : false,
       })
