@@ -91,7 +91,12 @@ export class SessionsController {
       return res.status(422).send()
     }
 
-    let video_media_uuid = body_parse.mediasourceid.split('_')[0] || null,
+    /**
+     * todo: supper Cinetry
+     * Cinetry v0.7.3 回传无此字段
+     * {"itemid":"itemid","positionticks":0,"ispaused":true,"playsessionid":"itemid"}
+     */
+    let video_media_uuid = body_parse.mediasourceid?.split('_')[0] || null,
       playing_media_data_cache_name = `playing_media_data_${video_media_uuid}`,
       playing_media_data: {
         id: number
