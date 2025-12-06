@@ -105,7 +105,12 @@ export class VideosController {
       return res.status(403).send()
     }
 
-    // todo: 增加播放量
+    await this.model
+      .update(db.schema.video_media)
+      .set({
+        number_view: db.sql`${db.schema.video_media.number_view} + 1`,
+      })
+      .where(db.eq(db.schema.video_media.id, video_media.id))
 
     let video_media_path_type = video_media.path_type,
       video_media_path_url = video_media.path_url

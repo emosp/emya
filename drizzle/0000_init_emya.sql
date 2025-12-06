@@ -142,7 +142,7 @@ CREATE TABLE `video_media` (
 	`path_type` varchar(255),
 	`path_url` text,
 	`user_id` bigint unsigned,
-	`number_view` bigint unsigned,
+	`number_view` bigint unsigned DEFAULT 0,
 	CONSTRAINT `video_media_id` PRIMARY KEY(`id`),
 	CONSTRAINT `video_media_uuid_unique` UNIQUE(`uuid`)
 ) AUTO_INCREMENT = 1001;

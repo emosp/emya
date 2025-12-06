@@ -81,10 +81,12 @@ export const video_media = mysql.mysqlTable(
       mode: 'number',
       unsigned: true,
     }),
-    number_view: mysql.bigint({
-      mode: 'number',
-      unsigned: true,
-    }),
+    number_view: mysql
+      .bigint({
+        mode: 'number',
+        unsigned: true,
+      })
+      .default(0),
   },
   (table) => [
     // prettier-ignore
