@@ -101,7 +101,7 @@ export class SessionsController {
       playing_media_data: {
         id: number
         file_second: number
-      } = JSON.parse((await this.cache.get(playing_media_data_cache_name)) || '[]')
+      } = JSON.parse((await this.cache.get(playing_media_data_cache_name)) || '{}')
 
     if (!playing_media_data.id && video_media_uuid) {
       playing_media_data = (await this.model.query.video_media.findFirst({
