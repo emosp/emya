@@ -123,6 +123,17 @@ CREATE TABLE `video_list` (
 	CONSTRAINT `unx_list` UNIQUE(`video_type`,`tmdb_id`)
 ) AUTO_INCREMENT = 1001;
 --> statement-breakpoint
+CREATE TABLE `video_list_title_alias` (
+	`id` bigint unsigned AUTO_INCREMENT NOT NULL,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`deleted_at` timestamp,
+	`video_list_id` bigint unsigned NOT NULL,
+	`title` varchar(255) NOT NULL,
+	`user_id` bigint unsigned,
+	CONSTRAINT `video_list_title_alias_id` PRIMARY KEY(`id`)
+) AUTO_INCREMENT = 1001;
+--> statement-breakpoint
 CREATE TABLE `video_media` (
 	`id` bigint unsigned AUTO_INCREMENT NOT NULL,
 	`created_at` timestamp NOT NULL DEFAULT (now()),
@@ -204,6 +215,8 @@ CREATE INDEX `idx_user_id` ON `video_image` (`user_id`);--> statement-breakpoint
 CREATE INDEX `idx_title` ON `video_list` (`title`);--> statement-breakpoint
 CREATE INDEX `idx_origin_title` ON `video_list` (`origin_title`);--> statement-breakpoint
 CREATE INDEX `idx_date_air` ON `video_list` (`date_air`);--> statement-breakpoint
+CREATE INDEX `idx_video_list_id` ON `video_list_title_alias` (`video_list_id`);--> statement-breakpoint
+CREATE INDEX `idx_title` ON `video_list_title_alias` (`title`);--> statement-breakpoint
 CREATE INDEX `idx_media` ON `video_media` (`video_list_id`,`video_season_id`,`video_episode_id`);--> statement-breakpoint
 CREATE INDEX `idx_user_id` ON `video_media` (`user_id`);--> statement-breakpoint
 CREATE INDEX `idx_video_episode_id` ON `video_media` (`video_episode_id`);--> statement-breakpoint

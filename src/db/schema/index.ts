@@ -6,6 +6,7 @@ import { favorites } from './favorites'
 import { user_video_record } from './user_video_record'
 import { library } from './library'
 import { video_list } from './video_list'
+import { video_list_title_alias } from './video_list_title_alias'
 import { video_season } from './video_season'
 import { video_episode } from './video_episode'
 import { video_image } from './video_image'
@@ -83,6 +84,7 @@ export {
   user_video_record,
   library,
   video_list,
+  video_list_title_alias,
   video_season,
   video_episode,
   video_image,
