@@ -38,5 +38,7 @@ export const video_episode = mysql.mysqlTable(
   (table) => [
     // prettier-ignore
     mysql.unique('unx_episode').on(table.video_list_id, table.video_season_id, table.episode_number),
+    mysql.index('idx_video_season_id').on(table.video_season_id),
+    mysql.index('idx_date_air').on(table.date_air),
   ],
 )

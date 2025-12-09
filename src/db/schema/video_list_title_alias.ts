@@ -26,5 +26,6 @@ export const video_list_title_alias = mysql.mysqlTable(
     // prettier-ignore
     mysql.index('idx_video_list_id').on(table.video_list_id),
     mysql.index('idx_title').on(table.title),
+    mysql.index('idx_deleted_at').on(table.deleted_at),
   ],
 )

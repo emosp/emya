@@ -290,21 +290,27 @@ export class TransformService {
       }
     }
 
-    let sql_join_video_list_title_alias = db.and(
-      // prettier-ignore
-      db.eq(db.schema.video_list_title_alias.video_list_id, db.schema.video_list.id),
-      db.isNull(db.schema.video_list_title_alias.deleted_at),
-    )
-
     let search_searchterm = search.searchterm || search.namestartswith
     if (search_searchterm) {
-      sql_db.leftJoin(db.schema.video_list_title_alias, sql_join_video_list_title_alias)
+      let video_list_title_alias = await this.model.query.video_list_title_alias.findMany({
+        columns: {
+          video_list_id: true,
+        },
+        where: db.and(
+          // prettier-ignore
+          db.like(db.schema.video_list_title_alias.title, `%${search_searchterm}%`),
+          db.isNull(db.schema.video_list_title_alias.deleted_at),
+        ),
+      })
+
+      let video_list_title_alias_ids = video_list_title_alias.map((row) => row.video_list_id)
+
       sql_conditions.push(
         db.or(
           // prettier-ignore
           db.like(db.schema.video_list.title, `%${search_searchterm}%`),
           // db.like(db.schema.video_list.origin_title, `%${search_searchterm}%`),
-          db.like(db.schema.video_list_title_alias.title, `%${search_searchterm}%`),
+          db.inArray(db.schema.video_list.id, video_list_title_alias_ids),
         ),
       )
     }
@@ -362,15 +368,7 @@ export class TransformService {
     sql_db.limit(Number(search.limit || 20))
 
     let rows = await sql_db,
-      count = (
-        await this.model
-          .select({
-            count: db.count(),
-          })
-          .from(db.schema.video_list)
-          .leftJoin(db.schema.video_list_title_alias, sql_join_video_list_title_alias)
-          .where(db.and(...sql_conditions))
-      )[0]['count']
+      count = await this.model.$count(db.schema.video_list, db.and(...sql_conditions))
 
     let server_id = this.EmbyService.Id()
 

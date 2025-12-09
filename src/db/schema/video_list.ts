@@ -55,8 +55,11 @@ export const video_list = mysql.mysqlTable(
   (table) => [
     // prettier-ignore
     mysql.unique('unx_list').on(table.video_type, table.tmdb_id),
+    mysql.index('idx_video_library_id').on(table.video_library_id),
     mysql.index('idx_title').on(table.title),
     mysql.index('idx_origin_title').on(table.origin_title),
     mysql.index('idx_date_air').on(table.date_air),
+    mysql.index('idx_updated_at').on(table.updated_at),
+    mysql.index('idx_deleted_at').on(table.deleted_at),
   ],
 )

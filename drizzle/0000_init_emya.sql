@@ -207,18 +207,26 @@ CREATE TABLE `video_subtitle` (
 CREATE INDEX `idx_name` ON `library` (`name`);--> statement-breakpoint
 CREATE INDEX `idx_user_id` ON `token` (`user_id`);--> statement-breakpoint
 CREATE INDEX `idx_list_id` ON `user_video_record` (`video_list_id`);--> statement-breakpoint
+CREATE INDEX `idx_season_id` ON `user_video_record` (`video_season_id`);--> statement-breakpoint
 CREATE INDEX `idx_episode_id` ON `user_video_record` (`video_episode_id`);--> statement-breakpoint
 CREATE INDEX `idx_video_media_id` ON `user_video_record` (`video_media_id`);--> statement-breakpoint
 CREATE INDEX `idx_user_id` ON `user_video_record` (`user_id`);--> statement-breakpoint
+CREATE INDEX `idx_video_season_id` ON `video_episode` (`video_season_id`);--> statement-breakpoint
+CREATE INDEX `idx_date_air` ON `video_episode` (`date_air`);--> statement-breakpoint
 CREATE INDEX `idx_image` ON `video_image` (`relation_type`,`relation_id`);--> statement-breakpoint
 CREATE INDEX `idx_user_id` ON `video_image` (`user_id`);--> statement-breakpoint
+CREATE INDEX `idx_video_library_id` ON `video_list` (`video_library_id`);--> statement-breakpoint
 CREATE INDEX `idx_title` ON `video_list` (`title`);--> statement-breakpoint
 CREATE INDEX `idx_origin_title` ON `video_list` (`origin_title`);--> statement-breakpoint
 CREATE INDEX `idx_date_air` ON `video_list` (`date_air`);--> statement-breakpoint
+CREATE INDEX `idx_updated_at` ON `video_list` (`updated_at`);--> statement-breakpoint
+CREATE INDEX `idx_deleted_at` ON `video_list` (`deleted_at`);--> statement-breakpoint
 CREATE INDEX `idx_video_list_id` ON `video_list_title_alias` (`video_list_id`);--> statement-breakpoint
 CREATE INDEX `idx_title` ON `video_list_title_alias` (`title`);--> statement-breakpoint
-CREATE INDEX `idx_media` ON `video_media` (`video_list_id`,`video_season_id`,`video_episode_id`);--> statement-breakpoint
+CREATE INDEX `idx_deleted_at` ON `video_list_title_alias` (`deleted_at`);--> statement-breakpoint
 CREATE INDEX `idx_user_id` ON `video_media` (`user_id`);--> statement-breakpoint
+CREATE INDEX `idx_video_list_id` ON `video_media` (`video_list_id`);--> statement-breakpoint
+CREATE INDEX `idx_video_season_id` ON `video_media` (`video_season_id`);--> statement-breakpoint
 CREATE INDEX `idx_video_episode_id` ON `video_media` (`video_episode_id`);--> statement-breakpoint
 CREATE INDEX `idx_video_media_id` ON `video_subtitle` (`video_media_id`);--> statement-breakpoint
 CREATE INDEX `idx_user_id` ON `video_subtitle` (`user_id`);

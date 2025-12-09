@@ -406,6 +406,13 @@
           ],
           "isUnique": false
         },
+        "idx_season_id": {
+          "name": "idx_season_id",
+          "columns": [
+            "video_season_id"
+          ],
+          "isUnique": false
+        },
         "idx_episode_id": {
           "name": "idx_episode_id",
           "columns": [
@@ -524,7 +531,22 @@
           "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "idx_video_season_id": {
+          "name": "idx_video_season_id",
+          "columns": [
+            "video_season_id"
+          ],
+          "isUnique": false
+        },
+        "idx_date_air": {
+          "name": "idx_date_air",
+          "columns": [
+            "date_air"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "video_episode_id": {
@@ -848,6 +870,13 @@
         }
       },
       "indexes": {
+        "idx_video_library_id": {
+          "name": "idx_video_library_id",
+          "columns": [
+            "video_library_id"
+          ],
+          "isUnique": false
+        },
         "idx_title": {
           "name": "idx_title",
           "columns": [
@@ -866,6 +895,20 @@
           "name": "idx_date_air",
           "columns": [
             "date_air"
+          ],
+          "isUnique": false
+        },
+        "idx_updated_at": {
+          "name": "idx_updated_at",
+          "columns": [
+            "updated_at"
+          ],
+          "isUnique": false
+        },
+        "idx_deleted_at": {
+          "name": "idx_deleted_at",
+          "columns": [
+            "deleted_at"
           ],
           "isUnique": false
         }
@@ -958,6 +1001,13 @@
           "name": "idx_title",
           "columns": [
             "title"
+          ],
+          "isUnique": false
+        },
+        "idx_deleted_at": {
+          "name": "idx_deleted_at",
+          "columns": [
+            "deleted_at"
           ],
           "isUnique": false
         }
@@ -1116,19 +1166,24 @@
         }
       },
       "indexes": {
-        "idx_media": {
-          "name": "idx_media",
-          "columns": [
-            "video_list_id",
-            "video_season_id",
-            "video_episode_id"
-          ],
-          "isUnique": false
-        },
         "idx_user_id": {
           "name": "idx_user_id",
           "columns": [
             "user_id"
+          ],
+          "isUnique": false
+        },
+        "idx_video_list_id": {
+          "name": "idx_video_list_id",
+          "columns": [
+            "video_list_id"
+          ],
+          "isUnique": false
+        },
+        "idx_video_season_id": {
+          "name": "idx_video_season_id",
+          "columns": [
+            "video_season_id"
           ],
           "isUnique": false
         },

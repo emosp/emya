@@ -45,6 +45,7 @@ export const user_video_record = mysql.mysqlTable(
   (table) => [
     // prettier-ignore
     mysql.index('idx_list_id').on(table.video_list_id),
+    mysql.index('idx_season_id').on(table.video_season_id),
     mysql.index('idx_episode_id').on(table.video_episode_id),
     mysql.index('idx_video_media_id').on(table.video_media_id),
     mysql.index('idx_user_id').on(table.user_id),
