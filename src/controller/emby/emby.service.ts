@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 
 // 媒体库
 export const EMBY_ITEM_ID_TYPE_VIDEO_LIBRARY = 'vb'
