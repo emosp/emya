@@ -156,4 +156,9 @@ export class SessionsController {
   async SessionStopped(@Body() body: any, @Res() res: any) {
     return await this.SessionPlaying(body, res)
   }
+
+  @Post('/Playing/Ping')
+  async SessionPing(@Body() body: any, @Res() res: any) {
+    return res.status(204).send()
+  }
 }
