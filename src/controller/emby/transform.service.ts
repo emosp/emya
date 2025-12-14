@@ -347,6 +347,11 @@ export class TransformService {
       }
     }
 
+    let search_tmdb_id = search.AnyProviderIdEquals?.tmdb
+    if (search_tmdb_id) {
+      sql_conditions.push(db.eq(db.schema.video_list.tmdb_id, search_tmdb_id))
+    }
+
     sql_db.where(db.and(...sql_conditions))
 
     let sortby = search.sortby || '',

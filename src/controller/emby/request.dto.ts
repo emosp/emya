@@ -41,6 +41,7 @@ export class UserItems {
   sortby?: string
   genreids?: string
   namestartswith?: string
+  anyprovideridequals?: string
 }
 
 export class UserItemsLatest {

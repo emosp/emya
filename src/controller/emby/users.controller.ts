@@ -225,6 +225,7 @@ export class UsersController {
       Fields: query.fields?.split(','),
       Filters: query.filters?.split(','),
       GenreIds: query.genreids?.split(','),
+      AnyProviderIdEquals: Object.fromEntries(query.anyprovideridequals?.split(',').map((item) => item.split('.')) || []),
     }
 
     let query_search_term = query.searchterm || query.namestartswith
