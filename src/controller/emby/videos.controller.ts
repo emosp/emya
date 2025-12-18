@@ -104,13 +104,15 @@ export class VideosController {
     if (!video_media) {
       return res.status(403).send()
     }
+    
+    let video_media_id = video_media.id
 
     await this.model
       .update(db.schema.video_media)
       .set({
         number_view: db.sql`${db.schema.video_media.number_view} + 1`,
       })
-      .where(db.eq(db.schema.video_media.id, video_media.id))
+      .where(db.eq(db.schema.video_media.id, video_media_id))
 
     let video_media_path_type = video_media.path_type,
       video_media_path_url = video_media.path_url
@@ -130,6 +132,7 @@ export class VideosController {
               cache_seconds: number
             }
           } = await ExternalApi('/emby/videoGetUrl', {
+            media_id: video_media_id,
             user_id,
             path_type: video_media_path_type,
             path_url: video_media_path_url,

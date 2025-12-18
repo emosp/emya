@@ -100,6 +100,7 @@
 ```json
 // 请求
 {
+    "media_id": 1,
     "user_id": 1,
     "path_type": "path_type",
     "path_url": "path_url",
