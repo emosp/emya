@@ -115,7 +115,7 @@ export class SessionsController {
       await this.cache.set(playing_media_data_cache_name, JSON.stringify(playing_media_data), 1000 * 60 * 60)
     }
 
-    let video_media_id = playing_media_data.id
+    let video_media_id = playing_media_data?.id
     if (!video_media_id) {
       return res.status(422).send('error video media id')
     }
