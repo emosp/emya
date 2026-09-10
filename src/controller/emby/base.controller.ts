@@ -18,7 +18,21 @@ export class BaseController {
 
   @Get('Genres')
   async BaseGenres() {
-    return this.EmbyService.ItemResponse()
+    let genres = await this.model.query.video_genre.findMany({
+      columns: {
+        id: true,
+        name: true,
+      },
+      where: db.isNull(db.schema.video_genre.deleted_at),
+    })
+
+    let rows = genres.map((g) => ({
+      Name: g.name,
+      Id: String(g.id),
+      Type: 'Genre',
+    }))
+
+    return this.EmbyService.ItemResponse(rows as any)
   }
 
   @Get('Tags')

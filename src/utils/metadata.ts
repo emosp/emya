@@ -43,8 +43,8 @@ export const FormatVideo = (info: {
           IsHearingImpaired: false,
           Height: stream.height,
           Width: stream.width,
-          AverageFrameRate: Number(stream.avg_frame_rate.split('/')[0]),
-          RealFrameRate: Number(stream.r_frame_rate.split('/')[0]),
+          AverageFrameRate: Number(stream.avg_frame_rate?.split('/')?.[0] || 24),
+          RealFrameRate: Number(stream.r_frame_rate?.split('/')?.[0] || 24),
           Profile: stream.profile,
           Type: 'Video',
           AspectRatio: stream.display_aspect_ratio,
@@ -63,21 +63,21 @@ export const FormatVideo = (info: {
         })
         break
       case 'audio':
-        let audio_codec = stream.codec_name,
-          audio_language = stream.tags.language || '',
-          audio_title = stream.tags.title || audio_language,
-          audio_channel_layout = stream.channel_layout
+        let audio_codec = stream.codec_name || 'aac',
+          audio_language = stream.tags?.language || '',
+          audio_title = stream.tags?.title || audio_language || 'Stereo',
+          audio_channel_layout = stream.channel_layout || 'stereo'
         streams.push({
           Codec: audio_codec,
           Language: audio_language,
           TimeBase: stream.time_base,
-          DisplayTitle: `${audio_title} ${audio_codec} ${audio_channel_layout}`,
+          DisplayTitle: `${audio_title} ${audio_codec} ${audio_channel_layout}`.trim(),
           DisplayLanguage: audio_language,
           IsInterlaced: false,
           ChannelLayout: audio_channel_layout,
-          BitRate: Number(stream.bit_rate),
-          Channels: stream.channels,
-          SampleRate: Number(stream.sample_rate),
+          BitRate: Number(stream.bit_rate) || 192000,
+          Channels: stream.channels || 2,
+          SampleRate: Number(stream.sample_rate) || 48000,
           IsDefault: true,
           IsForced: false,
           IsHearingImpaired: false,
@@ -95,9 +95,9 @@ export const FormatVideo = (info: {
         break
       // @ts-ignore
       case 'subtitle':
-        let subtitle_codec = stream.codec_name,
-          subtitle_language = stream.tags.language || 'unknow',
-          subtitle_title = stream.tags.title || subtitle_language
+        let subtitle_codec = stream.codec_name || 'subrip',
+          subtitle_language = stream.tags?.language || 'und',
+          subtitle_title = stream.tags?.title || subtitle_language
 
         streams.push({
           Codec: subtitle_codec,
@@ -129,8 +129,67 @@ export const FormatVideo = (info: {
     }
   }
 
+  // 零探测保护：如果没有解析出视频轨或音频轨，提供合规的默认轨，防止 Infuse 触发网络探测
+  const hasVideo = streams.some((s) => s.Type === 'Video')
+  const hasAudio = streams.some((s) => s.Type === 'Audio')
+
+  if (!hasVideo) {
+    streams.unshift({
+      Codec: 'hevc',
+      DisplayTitle: '1080P HEVC',
+      IsInterlaced: false,
+      BitRate: bit_rate || 8000000,
+      IsDefault: true,
+      IsForced: false,
+      IsHearingImpaired: false,
+      Height: 1080,
+      Width: 1920,
+      AverageFrameRate: 24,
+      RealFrameRate: 24,
+      Profile: 'Main',
+      Type: 'Video',
+      AspectRatio: '16:9',
+      Index: 0,
+      IsExternal: false,
+      IsTextSubtitleStream: false,
+      SupportsExternalStream: false,
+      Protocol: 'File',
+      PixelFormat: 'yuv420p',
+      Level: 120,
+      IsAnamorphic: false,
+      AttachmentSize: 0,
+    })
+  }
+
+  if (!hasAudio) {
+    streams.push({
+      Codec: 'aac',
+      Language: 'chi',
+      DisplayTitle: '中文 (AAC 立体声)',
+      DisplayLanguage: 'chi',
+      IsInterlaced: false,
+      ChannelLayout: 'stereo',
+      BitRate: 192000,
+      Channels: 2,
+      SampleRate: 48000,
+      IsDefault: true,
+      IsForced: false,
+      IsHearingImpaired: false,
+      Type: 'Audio',
+      Index: 1,
+      IsExternal: false,
+      IsTextSubtitleStream: false,
+      SupportsExternalStream: false,
+      Protocol: 'File',
+      ExtendedVideoType: 'None',
+      ExtendedVideoSubType: 'None',
+      ExtendedVideoSubTypeDescription: 'None',
+      AttachmentSize: 0,
+    })
+  }
+
   return {
     streams,
-    bit_rate,
+    bit_rate: bit_rate || 8000000,
   }
 }

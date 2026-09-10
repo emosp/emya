@@ -36,14 +36,25 @@ export class ItemsController {
             value: db.count(),
           })
           .from(db.schema.video_list)
-          .where(db.eq(db.schema.video_list.video_type, VideoTypes.VIDEO_TYPE_MOVIE as any))
+          .where(
+            db.and(
+              db.eq(db.schema.video_list.video_type, VideoTypes.VIDEO_TYPE_MOVIE as any),
+              db.isNull(db.schema.video_list.deleted_at),
+            ),
+          )
       )[0]['value'],
       SeriesCount: (
         await this.model
           .select({
             value: db.count(),
           })
-          .from(db.schema.video_season)
+          .from(db.schema.video_list)
+          .where(
+            db.and(
+              db.eq(db.schema.video_list.video_type, VideoTypes.VIDEO_TYPE_TV as any),
+              db.isNull(db.schema.video_list.deleted_at),
+            ),
+          )
       )[0]['value'],
       EpisodeCount: (
         await this.model
@@ -51,6 +62,7 @@ export class ItemsController {
             value: db.count(),
           })
           .from(db.schema.video_episode)
+          .where(db.isNull(db.schema.video_episode.deleted_at))
       )[0]['value'],
       GameCount: 0,
       ArtistCount: 0,
@@ -74,10 +86,11 @@ export class ItemsController {
       return res.status(404).send()
     }
 
-    let cache_name = `image_${emby_item_id}`,
+    let cache_name = `image_${emby_item_id}_${image_type}`,
       cache_data = await this.cache.get(cache_name)
 
     if (cache_data) {
+      res.header('Cache-Control', 'public, max-age=86400')
       return res.redirect(cache_data, 301)
     }
 
@@ -96,22 +109,24 @@ export class ItemsController {
     })
 
     if (!data) {
-      return res.status(403).send()
+      return res.status(404).send()
     }
 
     let url = data.path_url
 
     switch (data.path_type) {
       case VideoImagePathTypes.IMAGE_PATH_TYPE_TMDB:
-        let tmdb_size = `w400`
-        url = `https://image.tmdb.org/t/p/${tmdb_size}${data.path_url}`
+        let tmdb_base = (process.env.TMDB_IMAGE_MIRROR || 'https://image.tmdb.org').replace(/\/+$/, '')
+        let tmdb_size = process.env.TMDB_IMAGE_SIZE || 'original'
+        url = `${tmdb_base}/t/p/${tmdb_size}${data.path_url}`
         break
 
       default:
         break
     }
 
-    await this.cache.set(cache_name, url, 1000 * 60 * 60)
+    await this.cache.set(cache_name, url, 1000 * 60 * 60 * 24)
+    res.header('Cache-Control', 'public, max-age=86400')
     return res.redirect(url, 301)
   }
 

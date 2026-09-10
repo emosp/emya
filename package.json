@@ -11,7 +11,7 @@
     "dev": "nest start --watch",
     "prod": "node dist/src/main.js",
     "cli:dev": "ts-node -r tsconfig-paths/register cli.ts",
-    "cli": "node dist/src/cli.js",
+    "cli": "node dist/cli.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
   },

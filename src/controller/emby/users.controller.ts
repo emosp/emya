@@ -164,7 +164,9 @@ export class UsersController {
       device_version: emby_devices.version,
     })
 
-    if (user_id > Number(process.env?.APP_AUTH_NUMBER || 10)) {
+    const maxAuthNumber = Number(process.env?.APP_AUTH_NUMBER || 10)
+    const userCount = await this.model.$count(db.schema.user, db.isNull(db.schema.user.deleted_at))
+    if (userCount > maxAuthNumber) {
       return res.status(401).send('登陆失败 已超授权数')
     }
 
@@ -323,11 +325,12 @@ export class UsersController {
 
       if (data.video_type == VIDEO_TYPE_TV) {
         let data_episode_id = this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_EPISODE, data.video_episode_id as number)
+        let episode_runtime_ticks = Number(data.media_second || 0) * 10000000
         rows.push({
           Name: data.episode_title,
           Id: data_episode_id,
           CanDelete: false,
-          RunTimeTicks: 0,
+          RunTimeTicks: episode_runtime_ticks,
           ProductionYear: data_year,
           IndexNumber: data.episode_number,
           ParentIndexNumber: data.season_number,
@@ -355,11 +358,12 @@ export class UsersController {
           MediaType: 'Video',
         })
       } else {
+        let movie_runtime_ticks = Number(data.media_second || 0) * 10000000
         rows.push({
           Name: data.video_title,
           Id: data_video_id,
           CanDelete: false,
-          RunTimeTicks: 0,
+          RunTimeTicks: movie_runtime_ticks,
           ProductionYear: data_year,
           IsFolder: false,
           Type: 'Movie',

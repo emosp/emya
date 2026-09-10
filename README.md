@@ -59,6 +59,36 @@ pnpm run cli:dev import-test-data
 pnpm run dev
 ```
 
+# Infuse 与网盘（OneDrive / Google Drive）优化说明
+
+为了解决第三方播放器（特别是 Infuse）连接网盘类媒体库时的频控风暴、403 配额锁定与 429 报错，本项目进行了深度反向适配与底层重构：
+
+### 核心优化特性
+1. **Zero-Probing 探测阻断（保护 Google Drive 配额）**：
+   - 注入标准音视频媒体流（编码格式、分辨率、声道与采样率），强制声明 `SupportsProbing: false` 与 `RequiresOpening: false`；
+   - 彻底阻断 Infuse 在播放前发起的多次 `Range` 文件头探针（ffprobe），实现点开即播，杜绝 Google Drive 24 小时下载配额被快速消耗封锁。
+2. **OneDrive 1小时 Token 有效期与签名保护**：
+   - 全链路使用 `302 Found` 临时重定向（替代易导致 iOS/Infuse 永久死锁的 308），配合动态安全缓存窗口，在微软 Token 即将过期前自动刷新，彻底解决观影 1 小时后拖动进度条断流（401/403）的问题；
+   - 引入安全 URL 处理算法，保护微软 OneDrive/SharePoint 签名参数中的 Base64 特殊字符（如 `%2B`），杜绝二次转义破坏数字签名。
+3. **列表元数据饱和传输**：
+   - 视频列表接口一次性携带 `Overview`、`Genres`、`People`（演员与导演表）和 `RunTimeTicks`，消除客户端滑动列表时的海量回源详情请求。
+4. **TMDB 超清原图与镜像反代**：
+   - 支持环境变量 `TMDB_IMAGE_MIRROR` 与 `TMDB_IMAGE_SIZE`（默认 `original` 原图），告别海报模糊，404 图片自动添加 24 小时缓存。
+5. **修复继续观看进度卡片**：
+   - 填充准确的播放时长 Ticks，恢复 Infuse 首页继续播放卡片进度条。
+
+### 客户端设置注意事项（以 Infuse 为例）
+
+为了获得最流畅的观影体验并最大限度保护网盘 API，建议在 Infuse 中做如下设置：
+
+1. **元数据与插图设置**（路径：`设置` → `元数据与插图`）：
+   - **元数据抓取 / 自动下载元数据**：**开启 ✅**（由 Emby 服务端直接分发高清元数据）
+   - **优先使用本地插图 (Prefer Local Artwork)**：**关闭 ❌**（避免客户端在网盘目录中翻找不存在的 `poster.jpg` 产生大量 404）
+   - **优先使用本地元数据 (Prefer Local Metadata)**：**关闭 ❌**（无需扫描网盘中的 `.nfo`）
+   - **优先使用嵌入式插图 (Prefer Embedded Artwork)**：**关闭 ❌**（避免客户端扫描视频文件容器内的内置封面）
+2. **媒体库模式设置**（路径：`设置` → `共享` → 点击 Emby 服务器）：
+   - **媒体库 (Show in Library)**：建议**关闭 ❌**（切换为直接模式，将常用电影/剧集文件夹固定在首页个人收藏即可，兼顾美观与极致轻量）。
+
 ---
 
 欢迎使用 [`emos`](https://emos.lol/) 我们一起愉快观影

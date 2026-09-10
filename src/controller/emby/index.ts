@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common'
+import * as path from 'node:path'
 
 import { WinstonModule } from 'nest-winston'
 import * as winston from 'winston'
@@ -49,7 +50,7 @@ import { LibraryController } from '@/controller/emby/library.controller'
     WinstonModule.forRoot({
       transports: [
         new winston.transports.DailyRotateFile({
-          dirname: `@/../logs`,
+          dirname: path.resolve(process.cwd(), 'logs'),
           filename: 'emby_%DATE%.log',
           datePattern: 'YYYY-MM-DD',
           zippedArchive: true,

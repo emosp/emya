@@ -17,6 +17,51 @@ import { FormatVideo } from '@/utils/metadata'
 import { VideoTypes } from '@/db/schema/video_list'
 import { VideoImageTypes } from '@/db/schema/video_image'
 
+export const safeParseArray = (val: any): any[] => {
+  if (!val) return []
+  if (Array.isArray(val)) return val
+  if (typeof val === 'string') {
+    try {
+      const parsed = JSON.parse(val)
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  }
+  return []
+}
+
+export const formatGenres = (genres: any): string[] => {
+  const arr = safeParseArray(genres)
+  return arr
+    .map((item: any) => (typeof item === 'string' ? item : item?.name || String(item || '')))
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
+export const formatPeople = (peoples: any) => {
+  const arr = safeParseArray(peoples)
+  return arr
+    .map((p: any, idx: number) => {
+      if (typeof p === 'string') {
+        return {
+          Name: p,
+          Id: `p-${idx + 1}`,
+          Role: 'Actor',
+          Type: 'Actor',
+        }
+      }
+      return {
+        Name: p.name || p.Name,
+        Id: p.id ? String(p.id) : `p-${idx + 1}`,
+        Role: p.role || p.Role || 'Actor',
+        Type: p.type || p.Type || 'Actor',
+        PrimaryImageTag: p.image || p.PrimaryImageTag || undefined,
+      }
+    })
+    .filter((p: any) => Boolean(p.Name))
+}
+
 @Injectable()
 export class TransformService {
   constructor(
@@ -38,10 +83,10 @@ export class TransformService {
       where: db.eq(db.schema.user.id, user_id),
     })
 
-    let user_folders = JSON.parse(user_model.folders || '[]').map((folder: number) => folder.toString())
+    let user_folders = safeParseArray(user_model?.folders).map((folder: any) => folder.toString())
 
     return {
-      Name: user_model.username,
+      Name: user_model?.username || '',
       ServerId: this.EmbyService.Id(),
       Prefix: 'E',
       DateCreated: emby_user_time,
@@ -195,14 +240,20 @@ export class TransformService {
       where: db.eq(db.schema.user.id, user_id),
     })
 
-    let user_folders = JSON.parse(user_info.folders || '[]')
+    let user_folders = safeParseArray(user_info?.folders)
+    if (!user_folders.length) {
+      return []
+    }
 
     let libraries: any = await this.model.query.library.findMany({
       columns: {
         id: true,
         name: true,
       },
-      where: db.and(db.inArray(db.schema.library.id, user_folders)),
+      where: db.and(
+        db.inArray(db.schema.library.id, user_folders),
+        db.isNull(db.schema.library.deleted_at),
+      ),
       orderBy: db.asc(db.schema.library.id),
     })
 
@@ -260,6 +311,11 @@ export class TransformService {
         tmdb_id: db.schema.video_list.tmdb_id,
         video_type: db.schema.video_list.video_type,
         title: db.schema.video_list.title,
+        origin_title: db.schema.video_list.origin_title,
+        description: db.schema.video_list.description,
+        runtime: db.schema.video_list.runtime,
+        genres: db.schema.video_list.genres,
+        peoples: db.schema.video_list.peoples,
         date_air: db.schema.video_list.date_air,
         created_at: db.schema.video_list.created_at,
       })
@@ -270,15 +326,24 @@ export class TransformService {
       db.isNull(db.schema.video_list.deleted_at),
     ]
 
-    let user_folders: any = (
-      await this.model.query.user.findFirst({
-        columns: {
-          folders: true,
-        },
-        where: db.eq(db.schema.user.id, user_id),
-      })
-    )?.folders
-    sql_conditions.push(db.inArray(db.schema.video_list.video_library_id, JSON.parse(user_folders || '[]')))
+    let user_folders = safeParseArray(
+      (
+        await this.model.query.user.findFirst({
+          columns: {
+            folders: true,
+          },
+          where: db.eq(db.schema.user.id, user_id),
+        })
+      )?.folders,
+    )
+    if (user_folders.length > 0) {
+      sql_conditions.push(db.inArray(db.schema.video_list.video_library_id, user_folders))
+    } else {
+      return {
+        datas: [],
+        count: 0,
+      }
+    }
 
     let search_parent_value = search.parentid
     if (search_parent_value) {
@@ -382,21 +447,28 @@ export class TransformService {
       let is_movie = row.video_type == VideoTypes.VIDEO_TYPE_MOVIE,
         row_id = this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_LIST, row.id)
 
+      const genresList = formatGenres(row.genres)
+      const peopleList = formatPeople(row.peoples)
+      const row_runtime_ticks = row.runtime ? Number(row.runtime) * 60 * 10000000 : 0
+
       datas.push({
         Name: row.title,
+        OriginalTitle: row.origin_title || row.title,
         ServerId: server_id,
         Id: row_id,
         // Etag: row_id,
         DateCreated: formatTimeToEmby(row.created_at),
-        // SortName: row.title,
+        SortName: row.title,
         Path: this.EmbyService.DefaultPath(),
-        // Overview: '',
-        Genres: [],
+        Overview: row.description || '',
+        Genres: genresList,
         // ParentId: 'emos',
-        People: [],
-        GenreItems: [],
+        People: peopleList,
+        GenreItems: genresList.map((g) => ({ Name: g, Id: g })),
         // AirDays: [],
-        ProductionYear: Number(dayjs(row.date_air).format('YYYY')),
+        ProductionYear: Number(dayjs(row.date_air).format('YYYY')) || undefined,
+        PremiereDate: formatTimeToEmby(row.date_air),
+        RunTimeTicks: row_runtime_ticks,
         ProviderIds: {
           Tmdb: row.tmdb_id,
         },
@@ -565,18 +637,22 @@ export class TransformService {
           Path: `/${video_type}`,
           Overview: video_list.description,
           Taglines: [],
-          Genres: [],
+          Genres: formatGenres(video_list.genres),
           Size: 0,
           FileName: video_list.title,
-          ProductionYear: Number(dayjs(video_list.date_air).format('YYYY')),
+          ProductionYear: Number(dayjs(video_list.date_air).format('YYYY')) || undefined,
+          PremiereDate: formatTimeToEmby(video_list.date_air),
+          RunTimeTicks: video_list.runtime ? Number(video_list.runtime) * 60 * 10000000 : 0,
           RemoteTrailers: [],
-          ProviderIds: {},
+          ProviderIds: {
+            Tmdb: video_list.tmdb_id,
+          },
           IsFolder: !is_movie,
           ParentId: this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_LIBRARY, video_list.video_library_id),
           Type: is_movie ? 'Movie' : 'Series',
-          People: [],
+          People: formatPeople(video_list.peoples),
           Studios: [],
-          GenreItems: [],
+          GenreItems: formatGenres(video_list.genres).map((g) => ({ Name: g, Id: g })),
           TagItems: [],
           LocalTrailerCount: 0,
           UserData: {
@@ -836,13 +912,13 @@ export class TransformService {
           /**
            * 安卓 femor 1.0.66 的播放地址 如果返回的是 strm 就自己拼接 Path 了
            */
-          Container: 'mkv',
-          Size: video_media.file_size || 0,
+          Container: video_media.file_container || 'mkv',
+          Size: video_media.file_size || (file_second ? file_second * 1024 * 1024 : 1073741824),
           Name: name,
           IsRemote: true,
           RunTimeTicks: file_second ? file_second * 10000000 : 0,
           HasMixedProtocols: false,
-          SupportsTranscoding: true,
+          SupportsTranscoding: false,
           SupportsDirectStream: true,
           SupportsDirectPlay: true,
           IsInfiniteStream: false,
@@ -882,6 +958,8 @@ export class TransformService {
 
     if (video_episode_id) {
       db_where.push(db.eq(db.schema.video_media.video_episode_id, video_episode_id))
+    } else {
+      db_where.push(db.isNull(db.schema.video_media.video_episode_id))
     }
 
     let video_medias = await this.model.query.video_media.findMany({

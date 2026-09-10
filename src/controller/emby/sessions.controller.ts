@@ -103,16 +103,38 @@ export class SessionsController {
         file_second: number
       } = JSON.parse((await this.cache.get(playing_media_data_cache_name)) || '{}')
 
-    if (!playing_media_data?.id && video_media_uuid) {
-      playing_media_data = (await this.model.query.video_media.findFirst({
-        columns: {
-          id: true,
-          file_second: true,
-        },
-        where: db.eq(db.schema.video_media.uuid, video_media_uuid),
-      })) as any
+    let emby_item_type = emby_item[0],
+      emby_item_value = emby_item[1]
 
-      await this.cache.set(playing_media_data_cache_name, JSON.stringify(playing_media_data), 1000 * 60 * 60)
+    if (!playing_media_data?.id) {
+      if (video_media_uuid) {
+        playing_media_data = (await this.model.query.video_media.findFirst({
+          columns: {
+            id: true,
+            file_second: true,
+          },
+          where: db.eq(db.schema.video_media.uuid, video_media_uuid),
+        })) as any
+      } else {
+        // Cinetry 等客户端不传 mediasourceid 时的自动推断
+        let fallback_where: any = [db.isNull(db.schema.video_media.deleted_at)]
+        if (emby_item_type === EMBY_ITEM_ID_TYPE_VIDEO_LIST) {
+          fallback_where.push(db.eq(db.schema.video_media.video_list_id, emby_item_value))
+        } else if (emby_item_type === EMBY_ITEM_ID_TYPE_VIDEO_EPISODE) {
+          fallback_where.push(db.eq(db.schema.video_media.video_episode_id, emby_item_value))
+        }
+        playing_media_data = (await this.model.query.video_media.findFirst({
+          columns: {
+            id: true,
+            file_second: true,
+          },
+          where: db.and(...fallback_where),
+        })) as any
+      }
+
+      if (playing_media_data?.id && video_media_uuid) {
+        await this.cache.set(playing_media_data_cache_name, JSON.stringify(playing_media_data), 1000 * 60 * 60)
+      }
     }
 
     let video_media_id = playing_media_data?.id
@@ -120,30 +142,61 @@ export class SessionsController {
       return res.status(422).send('error video media id')
     }
 
-    let emby_item_type = emby_item[0],
-      emby_item_value = emby_item[1]
-
     let where: any = [db.eq(db.schema.user_video_record.user_id, this.request.user_id)]
+    let video_list_id: number | null = null
+    let video_season_id: number | null = null
+    let video_episode_id: number | null = null
 
     if (emby_item_type == EMBY_ITEM_ID_TYPE_VIDEO_LIST) {
+      video_list_id = emby_item_value
       where.push(db.eq(db.schema.user_video_record.video_list_id, emby_item_value))
+      where.push(db.isNull(db.schema.user_video_record.video_episode_id))
     }
 
     if (emby_item_type == EMBY_ITEM_ID_TYPE_VIDEO_EPISODE) {
+      video_episode_id = emby_item_value
       where.push(db.eq(db.schema.user_video_record.video_episode_id, emby_item_value))
+      let epInfo: any = await this.model.query.video_episode.findFirst({
+        columns: {
+          video_list_id: true,
+          video_season_id: true,
+        },
+        where: db.eq(db.schema.video_episode.id, video_episode_id),
+      })
+      video_list_id = epInfo?.video_list_id || null
+      video_season_id = epInfo?.video_season_id || null
     }
 
-    let play_seconds = body_parse.positionticks / 10000000,
-      file_second = playing_media_data.file_second
+    let play_seconds = (body_parse.positionticks || 0) / 10000000,
+      file_second = playing_media_data.file_second,
+      is_complete = file_second ? file_second - play_seconds < 60 * 5 : false
 
-    await this.model
-      .update(db.schema.user_video_record)
-      .set({
-        play_seconds: play_seconds > 0 ? play_seconds : 0,
+    let existingRecord = await this.model.query.user_video_record.findFirst({
+      columns: { id: true },
+      where: db.and(...where),
+    })
+
+    if (existingRecord) {
+      await this.model
+        .update(db.schema.user_video_record)
+        .set({
+          play_seconds: play_seconds > 0 ? play_seconds : 0,
+          video_media_id,
+          is_complete,
+        })
+        .where(db.and(...where))
+    } else if (video_list_id) {
+      await this.model.insert(db.schema.user_video_record).values({
+        user_id: this.request.user_id,
+        video_list_id,
+        video_season_id,
+        video_episode_id,
         video_media_id,
-        is_complete: file_second ? file_second - play_seconds < 60 * 5 : false,
+        play_seconds: play_seconds > 0 ? play_seconds : 0,
+        is_complete,
       })
-      .where(db.and(...where))
+    }
+
     return res.status(204).send()
   }
 

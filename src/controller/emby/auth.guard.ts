@@ -22,7 +22,7 @@ export class AuthGuard implements CanActivate {
     let token = request.query?.['x-emby-token'] || request.headers?.['x-emby-token'] || request.query?.['api_key']
 
     if (!token) {
-      let tokens = request.headers?.['x-emby-authorization']?.match(/Token="([^"]+)"/)
+      let tokens = request.headers?.['x-emby-authorization']?.match(/Token="?([^",\s]+)"?/)
       token = tokens?.[1]
     }
 

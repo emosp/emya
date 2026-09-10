@@ -1,4 +1,4 @@
-import { Controller, Inject, Req, Res, Get, Post, Delete, Put, Param, Query, Body } from '@nestjs/common'
+import { Controller, Inject, Req, Res, Get, Post, Delete, Put, Param, Query, Body, Head } from '@nestjs/common'
 
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston'
 import { Logger } from 'winston'
@@ -11,7 +11,23 @@ import { ExternalApi } from '@/utils/request'
 import { VideoMediaStatus, VideoMediaPathTypes } from '@/db/schema/video_media'
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager'
 
-@Controller(['/emby/videos'])
+/**
+ * 安全处理 OneDrive / Google Drive 直链
+ * 避免 encodeURI 将 Base64/签名中的 %2B 破坏为 %252B 导致 401 鉴权失效
+ */
+function safePlayUrl(url: string): string {
+  if (!url) return url
+  if (/%[0-9a-fA-F]{2}/.test(url)) {
+    return url.replace(/ /g, '%20')
+  }
+  try {
+    return encodeURI(url)
+  } catch {
+    return url
+  }
+}
+
+@Controller(['/emby/videos', '/videos'])
 export class VideosController {
   constructor(
     @Inject(CACHE_MANAGER) private cache: Cache,
@@ -36,7 +52,8 @@ export class VideosController {
    * 
    * Infuse 会自己拼接并请求地址 并加入 Static=true
    */
-  @Get(':emby_media_uuid/:emby_media_name')
+  @Get([':emby_media_uuid', ':emby_media_uuid/:emby_media_name'])
+  @Head([':emby_media_uuid', ':emby_media_uuid/:emby_media_name'])
   async VideoPlay(@Param('emby_media_uuid') emby_media_uuid: string, @Query('line') line: string, @Req() req: any, @Res() res: any) {
     let user_id = req.user_id
 
@@ -44,10 +61,13 @@ export class VideosController {
       cache_data = await this.cache.get(cache_name)
 
     if (cache_data) {
-      return res.redirect(cache_data, 308)
+      // 命中服务端直链缓存：针对 OneDrive 1小时有效期，返回 302 临时重定向和半小时客户端缓存
+      res.header('Cache-Control', 'private, max-age=1800')
+      return res.redirect(cache_data, 302)
     }
 
-    let cache_seconds = 1000 * 60 * 60 * 3
+    // 针对 OneDrive 直链 1 小时（3600秒）有效期，默认缓存设为 3000 秒（50分钟）留出刷新冗余
+    let cache_seconds = 3000
 
     let log = (message) => this.logger.error(`video play: ${emby_media_uuid} = ${message} | ${req.headers?.['user-agent']} ${req.url}`)
 
@@ -131,21 +151,33 @@ export class VideosController {
               url: string
               cache_seconds: number
             }
-          } = await ExternalApi('/emby/videoGetUrl', {
+          } = await ExternalApi('/emby/getVideoUrl', {
             media_id: video_media_id,
             user_id,
             path_type: video_media_path_type,
             path_url: video_media_path_url,
             uuid: video_media.uuid,
             line,
-          }).catch((error) => {
-            log(`external api error ${error}`)
-            return null
           })
+            .catch(() =>
+              ExternalApi('/emby/videoGetUrl', {
+                media_id: video_media_id,
+                user_id,
+                path_type: video_media_path_type,
+                path_url: video_media_path_url,
+                uuid: video_media.uuid,
+                line,
+              }),
+            )
+            .catch((error) => {
+              log(`external api error ${error}`)
+              return null
+            })
 
           if (api_response && api_response.code == 200) {
             video_play_url = api_response.data.url
-            cache_seconds = api_response.data.cache_seconds
+            // 针对 OneDrive 1小时有效期安全限幅
+            cache_seconds = Math.max(60, Math.min(api_response.data.cache_seconds || 3000, 3600))
           }
         }
         break
@@ -156,10 +188,15 @@ export class VideosController {
       return res.status(404).send()
     }
 
-    video_play_url = encodeURI(video_play_url)
-    await this.cache.set(cache_name, video_play_url, 1000 * cache_seconds)
+    video_play_url = safePlayUrl(video_play_url)
+    // 服务端缓存留出 120 秒冗余，避免在临界点分发失效 URL
+    let server_cache = Math.max(60, cache_seconds - 120)
+    await this.cache.set(cache_name, video_play_url, 1000 * server_cache)
 
-    return res.redirect(video_play_url, 308)
+    // 客户端缓存留出 300 秒冗余（最长 45 分钟），确保 OneDrive 直链过期前提前向 Emya 刷新，防止中途报 401
+    let client_cache = Math.max(60, Math.min(cache_seconds - 300, 2700))
+    res.header('Cache-Control', `private, max-age=${client_cache}`)
+    return res.redirect(video_play_url, 302)
   }
 
   /**
@@ -172,10 +209,11 @@ export class VideosController {
       cache_data = await this.cache.get(cache_name)
 
     if (cache_data) {
-      return res.redirect(cache_data, 308)
+      res.header('Cache-Control', 'private, max-age=1800')
+      return res.redirect(cache_data, 302)
     }
 
-    let cache_seconds = 1000 * 60 * 60 * 3
+    let cache_seconds = 3000
 
     let log = (message) => this.logger.error(`video subtitle: ${emby_subtitle_id} = ${message} | ${req.headers?.['user-agent']} ${req.url}`)
 
@@ -223,7 +261,7 @@ export class VideosController {
 
           if (api_response && api_response.code == 200) {
             video_subtitle_url = api_response.data.url
-            cache_seconds = api_response.data.cache_seconds
+            cache_seconds = Math.max(60, Math.min(api_response.data.cache_seconds || 3000, 3600))
           }
         }
         break
@@ -234,9 +272,21 @@ export class VideosController {
       return res.status(404).send()
     }
 
-    video_subtitle_url = encodeURI(video_subtitle_url)
-    await this.cache.set(cache_name, video_subtitle_url, 1000 * cache_seconds)
+    video_subtitle_url = safePlayUrl(video_subtitle_url)
+    let server_cache = Math.max(60, cache_seconds - 120)
+    await this.cache.set(cache_name, video_subtitle_url, 1000 * server_cache)
 
-    return res.redirect(video_subtitle_url, 308)
+    let client_cache = Math.max(60, Math.min(cache_seconds - 300, 2700))
+    res.header('Cache-Control', `private, max-age=${client_cache}`)
+    return res.redirect(video_subtitle_url, 302)
+  }
+
+  /**
+   * 支持安卓 AfuseKt 2.9+ 自定义请求的字幕地址
+   * /Videos/[emby_item_id]/[emby_media_uuid]/Subtitles/[emby_subtitle_id]/[emby_subtitle_name]
+   */
+  @Get(':emby_item_id/:emby_media_uuid/subtitles/:emby_subtitle_id/:emby_subtitle_name?')
+  async VideoSubtitleAfuseKt(@Param('emby_subtitle_id') emby_subtitle_id: number, @Req() req: any, @Res() res: any) {
+    return await this.VideoSubtitle(emby_subtitle_id, req, res)
   }
 }
