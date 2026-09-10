@@ -6,12 +6,13 @@ import { IgnoreAuth } from '@/controller/emby/auth.decorator'
 
 import { VideoTypes } from '@/db/schema/video_list'
 import { VideoImagePathTypes } from '@/db/schema/video_image'
+import { VideoImageTypes } from '@/db/schema/video_image'
 
 import { MySql2Database } from 'drizzle-orm/mysql2'
 import * as db from '@/db'
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager'
 
-@Controller(['/emby/items'])
+@Controller(['/emby/items', '/items'])
 export class ItemsController {
   constructor(
     @Inject('DB') private model: MySql2Database<typeof db.schema>,
@@ -36,14 +37,25 @@ export class ItemsController {
             value: db.count(),
           })
           .from(db.schema.video_list)
-          .where(db.eq(db.schema.video_list.video_type, VideoTypes.VIDEO_TYPE_MOVIE as any))
+          .where(
+            db.and(
+              db.eq(db.schema.video_list.video_type, VideoTypes.VIDEO_TYPE_MOVIE as any),
+              db.isNull(db.schema.video_list.deleted_at),
+            ),
+          )
       )[0]['value'],
       SeriesCount: (
         await this.model
           .select({
             value: db.count(),
           })
-          .from(db.schema.video_season)
+          .from(db.schema.video_list)
+          .where(
+            db.and(
+              db.eq(db.schema.video_list.video_type, VideoTypes.VIDEO_TYPE_TV as any),
+              db.isNull(db.schema.video_list.deleted_at),
+            ),
+          )
       )[0]['value'],
       EpisodeCount: (
         await this.model
@@ -51,6 +63,7 @@ export class ItemsController {
             value: db.count(),
           })
           .from(db.schema.video_episode)
+          .where(db.isNull(db.schema.video_episode.deleted_at))
       )[0]['value'],
       GameCount: 0,
       ArtistCount: 0,
@@ -66,18 +79,26 @@ export class ItemsController {
     }
   }
 
-  @Get(':emby_item_id/Images/:image_type')
+  @Get([':emby_item_id/Images/:image_type', ':emby_item_id/Images/:image_type/:image_index'])
   @IgnoreAuth()
   async ItemsImage(@Param('emby_item_id') emby_item_id: string, @Param('image_type') image_type: string, @Res() res: any) {
     let emby_item = this.EmbyService.ItemIdParse(emby_item_id)
     if (!emby_item) {
-      return res.status(404).send()
+      if (/^\d+$/.test(emby_item_id)) {
+        emby_item = [EMBY_ITEM_ID_TYPE_VIDEO_LIST, Number(emby_item_id)]
+      } else {
+        res.header('Cache-Control', 'public, max-age=86400')
+        return res.status(404).send()
+      }
     }
 
-    let cache_name = `image_${emby_item_id}`,
+    let normalized_image_type = image_type.toLowerCase() === 'primary' ? VideoImageTypes.TYPE_PRIMARY : image_type
+
+    let cache_name = `image_${emby_item[0]}_${emby_item[1]}_${normalized_image_type}`,
       cache_data = await this.cache.get(cache_name)
 
     if (cache_data) {
+      res.header('Cache-Control', 'public, max-age=86400')
       return res.redirect(cache_data, 301)
     }
 
@@ -90,28 +111,31 @@ export class ItemsController {
         // prettier-ignore
         db.eq(db.schema.video_image.relation_type, emby_item[0]),
         db.eq(db.schema.video_image.relation_id, emby_item[1]),
-        db.eq(db.schema.video_image.type, image_type),
+        db.eq(db.schema.video_image.type, normalized_image_type),
         db.isNull(db.schema.video_image.deleted_at),
       ),
     })
 
     if (!data) {
-      return res.status(403).send()
+      res.header('Cache-Control', 'public, max-age=86400')
+      return res.status(404).send()
     }
 
     let url = data.path_url
 
     switch (data.path_type) {
       case VideoImagePathTypes.IMAGE_PATH_TYPE_TMDB:
-        let tmdb_size = `w400`
-        url = `https://image.tmdb.org/t/p/${tmdb_size}${data.path_url}`
+        let tmdb_base = (process.env.TMDB_IMAGE_MIRROR || 'https://image.tmdb.org').replace(/\/+$/, '')
+        let tmdb_size = process.env.TMDB_IMAGE_SIZE || 'original'
+        url = `${tmdb_base}/t/p/${tmdb_size}${data.path_url}`
         break
 
       default:
         break
     }
 
-    await this.cache.set(cache_name, url, 1000 * 60 * 60)
+    await this.cache.set(cache_name, url, 1000 * 60 * 60 * 24)
+    res.header('Cache-Control', 'public, max-age=86400')
     return res.redirect(url, 301)
   }
 

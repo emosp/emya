@@ -1,4 +1,5 @@
 import { Controller, Inject, Req, Res, All, Get, Post, Delete, Put, Param, Query, Body, MethodNotAllowedException, NotFoundException } from '@nestjs/common'
+import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager'
 
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston'
 import { Logger } from 'winston'
@@ -25,9 +26,10 @@ import { ExternalApi } from '@/utils/request'
 import { VIDEO_TYPE_TV } from '@/db/schema/video_list'
 import { VideoImageTypes } from '@/db/schema/video_image'
 
-@Controller(['/emby/users'])
+@Controller(['/emby/users', '/users'])
 export class UsersController {
   constructor(
+    @Inject(CACHE_MANAGER) private cache: Cache,
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
     @Inject('DB') private model: MySql2Database<typeof db.schema>,
     private EmbyService: EmbyService,
@@ -66,17 +68,15 @@ export class UsersController {
             emby_devices[key.toLowerCase()] = value.replace(/"/g, '').substring(0, 200)
           }
         })
-    } else {
-      emby_devices.client = query?.['x-emby-client']
-      emby_devices.device = query?.['x-emby-device-name']
-      emby_devices.deviceid = query?.['x-emby-device-id']
-      emby_devices.version = query?.['x-emby-client-version']
     }
 
-    if (!emby_devices.deviceid) {
-      this.logger.error(`no x-emby-authorization ${ua}`)
-      return res.status(401).send('暂不兼容此设备 无 x-emby-authorization')
-    }
+    // 从独立请求头与 query 中补充设备参数，缺失时自动生成兜底，彻底杜绝无 x-emby-authorization 报 401
+    emby_devices.client = emby_devices.client || req.headers?.['x-emby-client'] || query?.['x-emby-client'] || 'Infuse'
+    emby_devices.device = emby_devices.device || req.headers?.['x-emby-device-name'] || query?.['x-emby-device-name'] || 'Apple Device'
+    emby_devices.deviceid = emby_devices.deviceid || req.headers?.['x-emby-device-id'] || query?.['x-emby-device-id'] || (body.username ? `device-${body.username}` : 'infuse-default-device')
+    emby_devices.version = emby_devices.version || req.headers?.['x-emby-client-version'] || query?.['x-emby-client-version'] || '1.0.0'
+
+    let password_input = body.pw ?? (body as any).password ?? query?.pw ?? query?.password ?? ''
 
     let user_id = 0
     if (process.env.API_EXTERNAL) {
@@ -91,7 +91,7 @@ export class UsersController {
         }
       } = await ExternalApi('/emby/userLogin', {
         username: body.username,
-        password: body.pw,
+        password: password_input,
         ...emby_devices,
       }).catch((error) => {
         this.logger.error(`error login external ${error} ${body.username} `)
@@ -140,7 +140,7 @@ export class UsersController {
       })
 
       let password = user?.password
-      if (!user || (password && !(await argon2.verify(user.password, body.pw)))) {
+      if (!user || (password && !(await argon2.verify(user.password, password_input)))) {
         this.logger.error(`error login ${body.username} - ${ua} = ${emby_authorization}`)
         return res.status(401).send('用户名或密码错误')
       }
@@ -164,7 +164,9 @@ export class UsersController {
       device_version: emby_devices.version,
     })
 
-    if (user_id > Number(process.env?.APP_AUTH_NUMBER || 10)) {
+    const maxAuthNumber = Number(process.env?.APP_AUTH_NUMBER || 10)
+    const userCount = await this.model.$count(db.schema.user, db.isNull(db.schema.user.deleted_at))
+    if (userCount > maxAuthNumber) {
       return res.status(401).send('登陆失败 已超授权数')
     }
 
@@ -323,11 +325,12 @@ export class UsersController {
 
       if (data.video_type == VIDEO_TYPE_TV) {
         let data_episode_id = this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_EPISODE, data.video_episode_id as number)
+        let episode_runtime_ticks = Number(data.media_second || 0) * 10000000
         rows.push({
           Name: data.episode_title,
           Id: data_episode_id,
           CanDelete: false,
-          RunTimeTicks: 0,
+          RunTimeTicks: episode_runtime_ticks,
           ProductionYear: data_year,
           IndexNumber: data.episode_number,
           ParentIndexNumber: data.season_number,
@@ -344,7 +347,9 @@ export class UsersController {
           },
           SeriesName: data.video_title,
           SeriesId: data_video_id,
-          SeriesPrimaryImageTag: '',
+          SeriesPrimaryImageTag: data_video_id,
+          PrimaryImageTag: data_episode_id,
+          Etag: data_episode_id,
           SeasonName: data.season_title,
           SeasonId: this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_SEASON, data.video_season_id as number),
           PrimaryImageAspectRatio: 1.7,
@@ -355,11 +360,12 @@ export class UsersController {
           MediaType: 'Video',
         })
       } else {
+        let movie_runtime_ticks = Number(data.media_second || 0) * 10000000
         rows.push({
           Name: data.video_title,
           Id: data_video_id,
           CanDelete: false,
-          RunTimeTicks: 0,
+          RunTimeTicks: movie_runtime_ticks,
           ProductionYear: data_year,
           IsFolder: false,
           Type: 'Movie',
@@ -371,6 +377,8 @@ export class UsersController {
             Played: user_video_record.is_complete,
           },
           PrimaryImageAspectRatio: 0.6,
+          PrimaryImageTag: data_video_id,
+          Etag: data_video_id,
           ImageTags: {
             [VideoImageTypes.TYPE_PRIMARY]: data_video_id,
           },
@@ -385,7 +393,15 @@ export class UsersController {
 
   @Get(':emby_user_id/items/latest')
   async UserItemsLatest(@Req() req: any, @Query() query: RequestDto.UserItemsLatest) {
-    return (await this.TransformService.VideoList(req.user_id, query)).datas
+    // V31 核心优化：5 秒微缓存，有效合并 Infuse 首页刷新时的瞬时重复请求
+    let cache_key = `user_items_latest_${req.user_id}_${query.parentid || 'all'}_${query.limit || 16}`
+    let cached = await this.cache.get(cache_key)
+    if (cached) {
+      return cached
+    }
+    let result = (await this.TransformService.VideoList(req.user_id, query)).datas
+    await this.cache.set(cache_key, result, 5000)
+    return result
   }
 
   @Get(':emby_user_id/items/:emby_item_id')

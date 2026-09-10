@@ -69,6 +69,7 @@ export class ShowsController {
         SortName: season_title,
         ServerId: server_id,
         Id: season_item_id,
+        PrimaryImageTag: season_item_id,
         ImageTags: {
           [VideoImageTypes.TYPE_PRIMARY]: season_item_id,
         },
@@ -82,7 +83,7 @@ export class ShowsController {
         Type: 'Season',
         SeriesId: video_list_item_id,
         SeriesName: video_title,
-        SeriesPrimaryImageTag: 'image',
+        SeriesPrimaryImageTag: video_list_item_id,
         Genres: [],
         People: [],
         GenreItems: [],
@@ -179,13 +180,16 @@ export class ShowsController {
       },
     })
 
-    let season_data: any = await this.model.query.video_season.findFirst({
-      columns: {
-        title: true,
-        season_number: true,
-      },
-      where: db.eq(db.schema.video_season.id, query_season_id || episodes[0]?.video_season_id),
-    })
+    const targetSeasonId = query_season_id || episodes[0]?.video_season_id
+    let season_data: any = targetSeasonId
+      ? await this.model.query.video_season.findFirst({
+          columns: {
+            title: true,
+            season_number: true,
+          },
+          where: db.eq(db.schema.video_season.id, targetSeasonId),
+        })
+      : null
 
     let video_title = await this.TransformService.GetVideoListTitleById(episodes[0]?.video_list_id)
 
@@ -213,22 +217,24 @@ export class ShowsController {
         CanDownload: true,
         SupportsSync: true,
         PremiereDate: formatTimeToEmby(episode.date_air),
-        RunTimeTicks: video_media_first_file_second * 10000000,
-        Overview: episode.description,
+        RunTimeTicks: video_media_first_file_second ? Number(video_media_first_file_second) * 10000000 : 0,
+        Overview: episode.description || '',
         // ProductionYear: Number(dayjs(episode.date_air).format('YYYY')),
         IndexNumber: episode.episode_number,
-        ParentIndexNumber: season_data.season_number,
+        ParentIndexNumber: season_data?.season_number || 1,
         IsFolder: false,
         Type: 'Episode',
         People: [],
         // ParentBackdropItemId: '',
         ParentBackdropImageTags: [],
         SeriesId: this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_LIST, episode.video_list_id),
-        SeriesName: video_title,
+        SeriesName: video_title || '',
+        SeriesPrimaryImageTag: this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_LIST, episode.video_list_id),
         SeasonId: this.EmbyService.ItemIdGenerate(EMBY_ITEM_ID_TYPE_VIDEO_SEASON, episode.video_season_id),
-        SeasonName: season_data.title,
+        SeasonName: season_data?.title || `第 ${season_data?.season_number || 1} 季`,
         PrimaryImageAspectRatio: 1.7,
-        SeriesPrimaryImageTag: '',
+        PrimaryImageTag: episode_item_id,
+        Etag: episode_item_id,
         ImageTags: {
           [VideoImageTypes.TYPE_PRIMARY]: episode_item_id,
         },

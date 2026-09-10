@@ -1,2 +1,5 @@
-patchedDependencies:
-  fastify: patches/fastify.patch
+allowBuilds:
+  argon2: true
+  esbuild: true
+# patchedDependencies:
+#   fastify: patches/fastify.patch

@@ -29,5 +29,8 @@ declare namespace NodeJS {
     EMBY_VERSION: string
     EMBY_ID: string
     EMBY_EXT_SERVER_DOMAINS: string
+
+    TMDB_IMAGE_MIRROR?: string
+    TMDB_IMAGE_SIZE?: string
   }
 }

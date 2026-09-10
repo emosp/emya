@@ -59,6 +59,58 @@ pnpm run cli:dev import-test-data
 pnpm run dev
 ```
 
+# Infuse 与网盘（OneDrive / Google Drive）优化说明
+
+为了解决第三方播放器（特别是 Infuse）连接网盘类媒体库时的频控风暴、403 配额锁定与 429 报错，本项目进行了深度反向适配与底层重构：
+
+### 核心优化特性
+1. **Zero-Probing 探测阻断（保护 Google Drive 配额）**：
+   - 注入标准音视频媒体流（编码格式、分辨率、声道与采样率），强制声明 `SupportsProbing: false` 与 `RequiresOpening: false`；
+   - 彻底阻断 Infuse 在播放前发起的多次 `Range` 文件头探针（ffprobe），实现点开即播，杜绝 Google Drive 24 小时下载配额被快速消耗封锁。
+2. **OneDrive 1小时 Token 有效期与签名保护**：
+   - 全链路使用 `302 Found` 临时重定向（替代易导致 iOS/Infuse 永久死锁的 308），配合动态安全缓存窗口，在微软 Token 即将过期前自动刷新，彻底解决观影 1 小时后拖动进度条断流（401/403）的问题；
+   - 引入安全 URL 处理算法，保护微软 OneDrive/SharePoint 签名参数中的 Base64 特殊字符（如 `%2B`），杜绝二次转义破坏数字签名。
+3. **列表元数据饱和传输**：
+   - 视频列表接口一次性携带 `Overview`、`Genres`、`People`（演员与导演表）和 `RunTimeTicks`，消除客户端滑动列表时的海量回源详情请求。
+4. **TMDB 超清原图与镜像反代**：
+   - 支持环境变量 `TMDB_IMAGE_MIRROR` 与 `TMDB_IMAGE_SIZE`（默认 `original` 原图），告别海报模糊，404 图片自动添加 24 小时缓存。
+5. **修复继续观看进度卡片**：
+   - 填充准确的播放时长 Ticks，恢复 Infuse 首页继续播放卡片进度条。
+6. **Infuse 登录兼容性增强与双路由适配**：
+   - 修复登录鉴权 DTO，移除对常用昵称（如 `admin`、`emos`、`root` 等）的误伤拦截，兼容 `password` / `pw` 多种字段入参；
+   - 自动容错解析 `X-Emby-Authorization` 请求头中的 `DeviceId` 与系统 header，缺省时自动生成 fallback ID，杜绝误报 401 导致客户端无法登录；
+   - 开放 `/emby/users` 与 `/users` 等双路由支持，全面保障各版本客户端连接顺畅。
+7. **片单与媒体库封面显示全面修复**：
+   - 兼容 Infuse 特有的带索引封面请求格式（如 `/Images/:type/:index`，如 `/Images/Primary/0`）；
+   - 补全媒体库根目录（CollectionFolder/UserViews）、剧集季（Season）、单集（Episode）的 `PrimaryImageTag`、`SeriesPrimaryImageTag` 与 `Etag` 响应标签，解决海报墙、片单封面空白与缓存失效问题。
+8. **V31 请求并发防抖与微缓存（Microcache）**：
+   - 针对 Infuse 刷新首页时高频并发触发的 `GET /Users/{id}/Items/Latest` 请求，引入 5 秒内存级并发去重与微缓存，有效抵御多设备同时刷新带来的数据库冲击与网络延迟。
+
+### 客户端设置注意事项（以 Infuse 为例）
+
+为了获得最流畅的观影体验并最大限度保护网盘 API，建议在 Infuse 中做如下设置：
+
+1. **元数据与插图设置**（路径：`设置` → `元数据与插图`）：
+   - **元数据抓取 / 自动下载元数据**：**开启 ✅**（由 Emby 服务端直接分发高清元数据）
+   - **优先使用本地插图 (Prefer Local Artwork)**：**关闭 ❌**（避免客户端在网盘目录中翻找不存在的 `poster.jpg` 产生大量 404）
+   - **优先使用本地元数据 (Prefer Local Metadata)**：**关闭 ❌**（无需扫描网盘中的 `.nfo`）
+   - **优先使用嵌入式插图 (Prefer Embedded Artwork)**：**关闭 ❌**（避免客户端扫描视频文件容器内的内置封面）
+2. **媒体库模式设置**（路径：`设置` → `共享` → 点击 Emby 服务器）：
+   - **媒体库 (Show in Library)**：建议**关闭 ❌**（切换为直接模式，将常用电影/剧集文件夹固定在首页个人收藏即可，兼顾美观与极致轻量）。
+
+### 更新记录
+
+- **第二次提交更新（客户端兼容性与 V31 核心微缓存）**：
+  - **登录兼容性全面增强**：修复 DTO 验证，移除了对常用昵称（如 `admin`、`emos`、`root` 等）的拦截规则，杜绝 422 报错；兼容 `password` / `pw` 字段入参；自动容错解析 `X-Emby-Authorization` 与系统 Headers 中的 `DeviceId`，缺省时自动生成兜底 ID，杜绝误报 401 导致客户端无法登录；支持 `/emby/users` 与 `/users` 双路由。
+  - **片单与媒体库封面显示全面修复**：兼容 Infuse 特有的带索引封面请求格式（如 `/Images/:type/:index`，满足 `/Images/Primary/0`）；全量补齐媒体库（CollectionFolder/UserViews）、剧集季（Season）、单集（Episode）的 `PrimaryImageTag`、`SeriesPrimaryImageTag` 与 `Etag` 响应标签，解决海报墙、片单封面空白与缓存失效问题。
+  - **V31 请求并发防抖与微缓存（Microcache）**：针对 Infuse 刷新首页时高频并发触发的 `GET /Users/{id}/Items/Latest` 请求，引入 5 秒内存级并发去重与微缓存，有效抵御多设备同时刷新带来的数据库冲击与网络延迟。
+- **初始提交更新（Infuse 播放器反向适配与网盘防风暴）**：
+  - **Zero-Probing 探测阻断**：注入标准音视频媒体流，强制声明 `SupportsProbing: false`，阻断 Infuse 预读 Range 探针，保护 Google Drive 24 小时下载配额。
+  - **OneDrive 1小时 Token 与签名保护**：全链路采用 302 临时重定向，动态安全窗口刷新 Token，杜绝观影 1 小时拖动断流；安全 URL 算法保护 Base64 签名不被二次转义破坏。
+  - **列表元数据饱和传输**：列表直出 Overview、演职员表、标签与时长 Ticks，消除列表滑动时的回源请求风暴。
+  - **TMDB 原图镜像与继续观看卡片**：支持高清图片镜像与 404 缓存；补全播放进度 Ticks，恢复首页继续观看进度条。
+
 ---
 
 欢迎使用 [`emos`](https://emos.lol/) 我们一起愉快观影
+
