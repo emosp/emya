@@ -6,26 +6,11 @@ export class Auth {
   @IsNotEmpty({
     message: '用户名不能为空',
   })
-  @IsNotInCaseValidation(
-    [
-      // prettier-ignore
-      'emos',
-      'root',
-      'admin',
-      'system',
-      'test',
-      'null',
-      'true',
-      'false',
-      'emby',
-    ],
-    {
-      message: '不能使用这个昵称耶',
-    },
-  )
   username: string
 
-  pw: string
+  pw?: string
+
+  password?: string
 }
 
 export class UserItems {

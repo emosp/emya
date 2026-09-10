@@ -76,6 +76,15 @@ pnpm run dev
    - 支持环境变量 `TMDB_IMAGE_MIRROR` 与 `TMDB_IMAGE_SIZE`（默认 `original` 原图），告别海报模糊，404 图片自动添加 24 小时缓存。
 5. **修复继续观看进度卡片**：
    - 填充准确的播放时长 Ticks，恢复 Infuse 首页继续播放卡片进度条。
+6. **Infuse 登录兼容性增强与双路由适配**：
+   - 修复登录鉴权 DTO，移除对常用昵称（如 `admin`、`emos`、`root` 等）的误伤拦截，兼容 `password` / `pw` 多种字段入参；
+   - 自动容错解析 `X-Emby-Authorization` 请求头中的 `DeviceId` 与系统 header，缺省时自动生成 fallback ID，杜绝误报 401 导致客户端无法登录；
+   - 开放 `/emby/users` 与 `/users` 等双路由支持，全面保障各版本客户端连接顺畅。
+7. **片单与媒体库封面显示全面修复**：
+   - 兼容 Infuse 特有的带索引封面请求格式（如 `/Images/:type/:index`，如 `/Images/Primary/0`）；
+   - 补全媒体库根目录（CollectionFolder/UserViews）、剧集季（Season）、单集（Episode）的 `PrimaryImageTag`、`SeriesPrimaryImageTag` 与 `Etag` 响应标签，解决海报墙、片单封面空白与缓存失效问题。
+8. **V31 请求并发防抖与微缓存（Microcache）**：
+   - 针对 Infuse 刷新首页时高频并发触发的 `GET /Users/{id}/Items/Latest` 请求，引入 5 秒内存级并发去重与微缓存，有效抵御多设备同时刷新带来的数据库冲击与网络延迟。
 
 ### 客户端设置注意事项（以 Infuse 为例）
 
